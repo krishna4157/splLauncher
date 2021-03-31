@@ -1,0 +1,4 @@
+storePassword=krishna4157
+keyPassword=krishna4157
+keyAlias=key
+storeFile=C:/users/krish/launcherCredentials/key.jks
