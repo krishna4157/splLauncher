@@ -95,19 +95,22 @@ class SharedPreferencesDemo extends StatefulWidget {
 }
 
 class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
+  void setStateIfMounted(f) {
+    if (mounted) setState(f);
+  }
+
   Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   Future<Map> _list;
 
   Future<void> _incrementCounter() async {
     final SharedPreferences prefs = await _prefs;
     // final var list = (prefs.getInt('list') ?? 0) + 1;
-    setState(() {
+    setStateIfMounted(() {
       loading = true;
     });
     Future<List<Application>> apps = DeviceApps.getInstalledApplications(
       includeAppIcons: true,
       includeSystemApps: true,
-      onlyAppsWithLaunchIntent: true,
     );
 
     list = [];
@@ -115,7 +118,13 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
     var appsList = await apps;
     for (int i = 0; i < appsList.length; i++) {
       Application app = appsList[i];
-      list.add(app);
+      if (app.apkFilePath.contains('/data/app') ||
+          app.apkFilePath.contains('/system/priv-app')) {
+        if (!app.appName.contains('com.')) {
+          list.add(app);
+        }
+        // }
+      }
     }
 
     list.sort((a, b) => a.appName
@@ -123,14 +132,14 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
         .toLowerCase()
         .compareTo(b.appName.toString().toLowerCase()));
 
-    setState(() {
+    setStateIfMounted(() {
       list = list;
       loading = false;
     });
 
     // var tempList = new List<String>.from(list);
 
-    // setState(() {
+    // setStateIfMounted(() {
     // _list = prefs.setStringList("list", tempList).then((bool success) {
     //   return _list;
     //   // });
@@ -140,15 +149,18 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
   @override
   void initState() {
     super.initState();
+    setStateIfMounted(() {
+      selectedList = selectedList;
+    });
     if (list == null) {
       _incrementCounter();
     }
     userNameController.clear();
-    setState(() {
+    setStateIfMounted(() {
       searchText = "";
     });
     userNameController.addListener(() {
-      setState(() {
+      setStateIfMounted(() {
         searchText = userNameController.text.toString();
         count = count;
       });
@@ -162,7 +174,7 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
         }
       }
 
-      setState(() {
+      setStateIfMounted(() {
         count = c;
         selectedList = selectedList;
       });
@@ -352,7 +364,7 @@ class HeaderSection extends StatelessWidget {
               onTap: () {
                 var s = {'packageName': packageName, 'title': title};
                 if (selectedList.length > 5) {
-                  selectedList.removeAt(0);
+                  selectedList.removeLast();
                 }
                 bool isPackageIncluded = false;
                 selectedList.forEach((element) {
@@ -361,7 +373,7 @@ class HeaderSection extends StatelessWidget {
                   }
                 });
                 if (isPackageIncluded == false) {
-                  selectedList.add(s);
+                  selectedList.insert(0, s);
                 }
                 // if (!selectedList.map(s)) {
                 // Navigator.of(context).pop();
@@ -371,7 +383,11 @@ class HeaderSection extends StatelessWidget {
                         type: PageTransitionType.bottomToTop,
                         duration: Duration(seconds: 1),
                         child: CountingApp()));
-                DeviceApps.openApp(packageName);
+                if (title.toLowerCase() == 'phone') {
+                  _launchCaller("");
+                } else {
+                  DeviceApps.openApp(packageName);
+                }
               },
               child: Row(
                 children: [
@@ -425,16 +441,27 @@ class RoundedButtons extends StatelessWidget {
           children: [
             TextButton(
                 onPressed: () {
-                  var s = {
-                    icon: '',
-                    'packageName': packageName,
-                    'title': title
-                  };
+                  var s = {'packageName': packageName, 'title': title};
+
                   if (selectedList.length > 5) {
-                    selectedList.removeAt(0);
+                    selectedList.removeLast();
                   }
 
-                  DeviceApps.openApp(packageName);
+                  var index = selectedList.indexWhere(
+                      (element) => element['packageName'] == packageName);
+                  selectedList.removeAt(index);
+                  selectedList.insert(0, s);
+                  Navigator.pushReplacement(
+                      context,
+                      PageTransition(
+                          type: PageTransitionType.bottomToTop,
+                          duration: Duration(seconds: 1),
+                          child: CountingApp()));
+                  if (title.toLowerCase() == 'phone') {
+                    _launchCaller("");
+                  } else {
+                    DeviceApps.openApp(packageName);
+                  }
                 },
                 style: ButtonStyle(
                     shape: MaterialStateProperty.all<RoundedRectangleBorder>(
