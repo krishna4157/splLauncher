@@ -1,26 +1,44 @@
+// Copyright 2017 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// ignore_for_file: public_member_api_docs
+
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 import 'package:device_apps/device_apps.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:launcher/main.dart';
+import 'package:page_transition/page_transition.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:touchable_opacity/touchable_opacity.dart';
-import 'package:lodash_dart/lodash_dart.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:battery/battery.dart';
 
-var list = [];
+var list;
+var searchText = "";
 var selectedList = [];
-var iconsList = [];
-var searchText = '';
+var loading = false;
 var userNameController = new TextEditingController();
 var count = 0;
-getAppsData(packageName) async {}
+
+bool isNumericUsingRegularExpression(String string) {
+  final numericRegex = RegExp(r'^-?(([0-9]*)|(([0-9]*)\.([0-9]*)))$');
+
+  return numericRegex.hasMatch(string);
+}
 
 _launchPlayStore(value) async {
-  var url = "https://play.google.com/store/search?q=$value";
+  var url;
+  if (value.contains('.com')) {
+    url = "https://www.$value";
+  } else {
+    url = "https://play.google.com/store/search?q=$value";
+  }
   if (await canLaunch(url)) {
     await launch(url);
   } else {
@@ -28,8 +46,8 @@ _launchPlayStore(value) async {
   }
 }
 
-_launchCaller() async {
-  const url = "tel:";
+_launchCaller(String text) async {
+  var url = "tel:$text";
   if (await canLaunch(url)) {
     await launch(url);
   } else {
@@ -50,7 +68,6 @@ getRandomColors() {
     Colors.deepOrangeAccent,
     Colors.lime
   ];
-
 // generates a new Random object
   final _random = new Random();
 
@@ -60,118 +77,314 @@ getRandomColors() {
   return element;
 }
 
+class SecondRoute extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'SPL LAuncher',
+      home: SharedPreferencesDemo(),
+    );
+  }
+}
+
+class SharedPreferencesDemo extends StatefulWidget {
+  SharedPreferencesDemo({Key key}) : super(key: key);
+
+  @override
+  SharedPreferencesDemoState createState() => SharedPreferencesDemoState();
+}
+
+class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
+  Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+  Future<Map> _list;
+
+  Future<void> _incrementCounter() async {
+    final SharedPreferences prefs = await _prefs;
+    // final var list = (prefs.getInt('list') ?? 0) + 1;
+    setState(() {
+      loading = true;
+    });
+    Future<List<Application>> apps = DeviceApps.getInstalledApplications(
+      includeAppIcons: true,
+      includeSystemApps: true,
+      onlyAppsWithLaunchIntent: true,
+    );
+
+    list = [];
+    // iconsList = [];
+    var appsList = await apps;
+    for (int i = 0; i < appsList.length; i++) {
+      Application app = appsList[i];
+      list.add(app);
+    }
+
+    list.sort((a, b) => a.appName
+        .toString()
+        .toLowerCase()
+        .compareTo(b.appName.toString().toLowerCase()));
+
+    setState(() {
+      list = list;
+      loading = false;
+    });
+
+    // var tempList = new List<String>.from(list);
+
+    // setState(() {
+    // _list = prefs.setStringList("list", tempList).then((bool success) {
+    //   return _list;
+    //   // });
+    // });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (list == null) {
+      _incrementCounter();
+    }
+    userNameController.clear();
+    setState(() {
+      searchText = "";
+    });
+    userNameController.addListener(() {
+      setState(() {
+        searchText = userNameController.text.toString();
+        count = count;
+      });
+      var c = 0;
+      for (int i = 0; i < list.length; i++) {
+        if (list[i]
+            .appName
+            .toLowerCase()
+            .contains(searchText.toString().toLowerCase())) {
+          c = c + 1;
+        }
+      }
+
+      setState(() {
+        count = c;
+        selectedList = selectedList;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+        // Show a red background as the item is swiped away.
+        background: CountingApp(),
+        key: Key('drawer'),
+        onDismissed: (direction) {
+          Navigator.pushReplacement(
+              context,
+              PageTransition(
+                  type: PageTransitionType.bottomToTop,
+                  duration: Duration(seconds: 1),
+                  child: CountingApp()));
+        },
+        child: Scaffold(
+            backgroundColor: Colors.black,
+            body: Column(children: <Widget>[
+              if (loading == false)
+                Expanded(
+                    flex: 3,
+                    child: Container(
+                      width: double.infinity,
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
+                          child: Column(
+                            children: <Widget>[
+                              for (var i in list)
+                                if (i.appName.toLowerCase().contains(
+                                    searchText.toString().toLowerCase()))
+                                  HeaderSection(
+                                      title: i.appName,
+                                      icon: i.icon,
+                                      packageName: i.packageName),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )),
+              if (searchText != "" && count == 0)
+                Expanded(
+                    child: Container(
+                        child: Padding(
+                            padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
+                            child: Center(
+                              child: TouchableOpacity(
+                                onTap: () {
+                                  if ((userNameController.text.contains('91') ||
+                                          userNameController.text.length >
+                                              10) ||
+                                      userNameController.text
+                                          .contains('call') ||
+                                      isNumericUsingRegularExpression(
+                                          userNameController.text)) {
+                                    _launchCaller(userNameController.text);
+                                  } else {
+                                    _launchPlayStore(userNameController.text);
+                                  }
+                                },
+                                child: Text(
+                                  ((userNameController.text.contains('91') ||
+                                                  isNumericUsingRegularExpression(
+                                                      userNameController
+                                                          .text)) ||
+                                              userNameController.text.length >
+                                                  10) ||
+                                          userNameController.text
+                                              .contains('call')
+                                      ? userNameController.text.contains('call')
+                                          ? '"${userNameController.text}" '
+                                          : 'call "${userNameController.text}" '
+                                      : userNameController.text.contains('.com')
+                                          ? 'open "${userNameController.text}" in browser.'
+                                          : 'search for "${userNameController.text}" in play store. ',
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    fontSize: 20,
+                                    fontFamily: 'Montserrat',
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            )))),
+              if (loading == true)
+                Expanded(
+                  flex: 5,
+                  child: Container(
+                    child: Center(
+                      child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Image.asset(
+                              'assets/images/dino.gif',
+                              height: 250,
+                              width: 250,
+                              fit: BoxFit.contain,
+                            ),
+                            Text(
+                              'Loading...',
+                              style: TextStyle(color: Colors.white),
+                            )
+                          ]),
+                    ),
+                  ),
+                ),
+              Expanded(
+                  flex: 0,
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: <Widget>[
+                        Container(
+                            // height: 10,
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                              Padding(
+                                  padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
+                                  child: TextFormField(
+                                    decoration: InputDecoration(
+                                        suffixIcon: IconButton(
+                                          onPressed: () =>
+                                              {userNameController.clear()},
+                                          icon: Icon(Icons.clear),
+                                        ),
+                                        hintText: 'Please enter a search term',
+                                        hintStyle: TextStyle(
+                                          fontSize: 15.0,
+                                          color: Colors.grey,
+                                        )),
+                                    controller: userNameController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    onFieldSubmitted: (value) {
+                                      //Validator
+                                    },
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 30,
+                                        fontFamily: 'Montserrat'),
+                                  )),
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
+                                child: Container(
+                                  // margin: EdgeInsets.symmetric(vertical: 10.0),
+                                  height: selectedList.length > 0 ? 60.0 : 0,
+                                  child: ListView(
+                                    scrollDirection: Axis.horizontal,
+                                    children: <Widget>[
+                                      for (var i in selectedList)
+                                        RoundedButtons(
+                                          title: i['title'],
+                                          // icon: i.icon,
+                                          packageName: i['packageName'],
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ]))
+                      ])),
+            ])));
+  }
+}
+
 class HeaderSection extends StatelessWidget {
   final String title;
   final Uint8List icon;
   final packageName;
+
   const HeaderSection({Key key, this.title, this.icon, this.packageName})
       : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    count++;
     return Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
       Padding(
           padding: EdgeInsets.all(10),
           child: TouchableOpacity(
               activeOpacity: 0.4,
               onTap: () {
-                // bool isInstalled = await DeviceApps.isAppInstalled(packageName);
-                // if (isInstalled) {
-                var s = {
-                  // 'icon': icon,
-                  'packageName': packageName, 'title': title
-                };
-
-                // selectedList = [] ;
-                // selectedList.map((element) {
-                //   if(element['title'] == title){
-
-                //   }
-                // })
+                var s = {'packageName': packageName, 'title': title};
                 if (selectedList.length > 5) {
                   selectedList.removeAt(0);
                 }
-                selectedList.add(s);
-                final jsonList =
-                    selectedList.map((item) => jsonEncode(item)).toList();
-
-                // using toSet - toList strategy
-                final uniqueJsonList = jsonList.toSet().toList();
-
-                // convert each item back to the original form using JSON decoding
-                final result =
-                    uniqueJsonList.map((item) => jsonDecode(item)).toList();
-                selectedList = [];
-                selectedList.addAll(result);
-                // if (!selectedList.map(s)) {
-
-                // }
-                if (packageName == "phone") {
-                  _launchCaller();
-                } else {
-                  DeviceApps.openApp(packageName);
+                bool isPackageIncluded = false;
+                selectedList.forEach((element) {
+                  if (element['packageName'] == packageName) {
+                    isPackageIncluded = true;
+                  }
+                });
+                if (isPackageIncluded == false) {
+                  selectedList.add(s);
                 }
-                // }
+                // if (!selectedList.map(s)) {
+                // Navigator.of(context).pop();
+                Navigator.pushReplacement(
+                    context,
+                    PageTransition(
+                        type: PageTransitionType.bottomToTop,
+                        duration: Duration(seconds: 1),
+                        child: CountingApp()));
+                DeviceApps.openApp(packageName);
               },
               child: Row(
                 children: [
-                  if (icon == null)
-                    ConstrainedBox(
-                      constraints:
-                          BoxConstraints.tightFor(width: 60, height: 60),
-                      child: ElevatedButton(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: <Widget>[
-                              Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: <Widget>[
-                                    Icon(
-                                      Icons.phone,
-                                      size: 25,
-                                    ),
-                                  ]),
-                            ]),
-                        onPressed: () {
-                          _launchCaller();
-                          //  UrlLauncher.launch("tel://<phone_number>");
-                          // DeviceApps.openApp("com.android.incallui");
-                        },
-                        // DeviceApps.openApp('com.android.incallui'),
-                        style:
-                            // ElevatedButton.styleFrom(
-                            //   shape: CircleBorder(),
-
-                            // ),
-                            ButtonStyle(
-                          shape:
-                              MaterialStateProperty.all<RoundedRectangleBorder>(
-                                  RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          )),
-                          backgroundColor:
-                              MaterialStateProperty.resolveWith<Color>(
-                            (Set<MaterialState> states) {
-                              if (states.contains(MaterialState.pressed))
-                                return Colors.blueAccent;
-                              return Colors
-                                  .black; // Use the component's default.
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (icon != null)
-                    ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Image.memory(
-                          icon,
-                          width: 50,
-                          height: 50,
-                        )),
+                  new Container(),
+                  ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: FadeInImage(
+                        placeholder: MemoryImage(icon),
+                        image: MemoryImage(icon),
+                        fadeInDuration: Duration(milliseconds: 700),
+                        height: 50,
+                        width: 50,
+                      )),
                   Padding(
                       padding: EdgeInsets.fromLTRB(10, 0, 0, 0),
                       child: Row(
@@ -194,6 +407,8 @@ class RoundedButtons extends StatelessWidget {
   final String title;
   // final Uint8List icon;
   final packageName;
+
+  bool isPackageIncluded;
   RoundedButtons({Key key, this.title, this.packageName}) : super(key: key);
   final Color color = getRandomColors();
 
@@ -218,23 +433,8 @@ class RoundedButtons extends StatelessWidget {
                   if (selectedList.length > 5) {
                     selectedList.removeAt(0);
                   }
-                  selectedList.add(s);
-                  final jsonList =
-                      selectedList.map((item) => jsonEncode(item)).toList();
 
-                  // using toSet - toList strategy
-                  final uniqueJsonList = jsonList.toSet().toList();
-
-                  // convert each item back to the original form using JSON decoding
-                  final result =
-                      uniqueJsonList.map((item) => jsonDecode(item)).toList();
-                  selectedList = [];
-                  selectedList.addAll(result);
-                  if (packageName == "phone") {
-                    _launchCaller();
-                  } else {
-                    DeviceApps.openApp(packageName);
-                  }
+                  DeviceApps.openApp(packageName);
                 },
                 style: ButtonStyle(
                     shape: MaterialStateProperty.all<RoundedRectangleBorder>(
@@ -252,417 +452,6 @@ class RoundedButtons extends StatelessWidget {
           ],
         ),
       ),
-      // color: Colors.red,
-      // sty
     );
-  }
-}
-
-// class SecondRoute extends StatelessWidget {
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//         home: Scaffold(
-//             body: SafeArea(
-//       child: SingleChildScrollView(
-//         child: Column(
-//           children: <Widget>[
-//             Container(
-//               color: Colors.green, // Yellow
-//               height: 120.0,
-//             ),
-//             for (var i in list)
-//               HeaderSection(
-//                 title: i,
-//                 name: i,
-//               ),
-//             RaisedButton(
-//               onPressed: () => getAppsData(),
-//               child: Text('LOGIN'),
-//             ),
-//           ],
-//         ),
-//       ),
-//     )));
-//   }
-// }
-
-class SecondRoute extends StatelessWidget {
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-        title: 'SPL Launcher', home: SecondRoutePage(title: 'SPL Launcher'));
-  }
-}
-
-class SecondRoutePage extends StatefulWidget {
-  SecondRoutePage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  _SecondRoutePage createState() => _SecondRoutePage();
-}
-
-final Battery _battery = Battery();
-
-class _SecondRoutePage extends State<SecondRoutePage> {
-  var listComplete = [];
-  var loading = false;
-  var lowBattery = false;
-  get appName => null;
-  get packageName => null;
-  @override
-  initState() {
-    getAppsData('');
-    userNameController.addListener(() {
-      setState(() {
-        searchText = userNameController.text.toString();
-        count = count;
-      });
-      var c = 0;
-      for (int i = 0; i < list.length; i++) {
-        if (list[i]
-            .appName
-            .toLowerCase()
-            .contains(searchText.toString().toLowerCase())) {
-          c = c + 1;
-        }
-      }
-
-      setState(() {
-        count = c;
-        selectedList = selectedList;
-      });
-
-      // }
-    });
-    // getProfileData();
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    // userNameController.dispose();
-    super.dispose();
-  }
-
-  Future<void> getAppsData(value) async {
-    List<Application> apps = await DeviceApps.getInstalledApplications(
-      includeAppIcons: true,
-      includeSystemApps: true,
-      onlyAppsWithLaunchIntent: true,
-    );
-
-    list = [];
-    // iconsList = [];
-    for (int i = 0; i < apps.length; i++) {
-      Application app = apps[i];
-      // if (app.appName.contains(value) || value == '') {
-      list.add(app);
-      // }
-    }
-    // list.add({appName: 'phone', packageName: 'phone'});
-
-    list.sort((a, b) => a.appName
-        .toString()
-        .toLowerCase()
-        .compareTo(b.appName.toString().toLowerCase()));
-
-    setState(() {
-      listComplete = list;
-      selectedList = selectedList;
-      count = 1;
-      //print(_test1);
-    });
-  }
-
-  // Future<bool> _navigateToBackPage(counter) async {
-  //   Navigator.pop(counter);
-  //   Route route = MaterialPageRoute(builder: (context) => CountingApp());
-  //   Navigator.pushReplacement(context, route);
-  //   return true;
-  //   // Navigator.pop(counter);
-  //   // Navigator.pop(
-  //   //   context,
-  //   //   MaterialPageRoute(builder: (context) => SecondRoute()),
-  //   // );
-  // }
-
-  Future<bool> _willPopCallback(context) async {
-    // await showDialog or Show add banners or whatever
-    // then
-    Route route = MaterialPageRoute(builder: (context) => CountingApp());
-    Navigator.pushReplacement(context, route);
-    return true; // return true if the route to be popped
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // return Scaffold(
-    //     backgroundColor: Colors.black,
-    //     body: Column(children: <Widget>[
-    //       // Expanded(
-    //       //   flex: 1,
-    //       //   child: Container(),
-    //       // ),
-    //       Expanded(
-    //           flex: 1,
-    //           child: Container(
-    //               width: double.infinity,
-    //               child: SingleChildScrollView(
-    //                   child: Column(children: <Widget>[
-    //                 // FloatingActionButton(
-    //                 //   heroTag: null,
-    //                 //   onPressed: () => {},
-    //                 //   tooltip: 'press me',
-    //                 //   child: Icon(Icons.add),
-    //                 // ),
-    //                 Column(
-    //                     mainAxisAlignment: MainAxisAlignment.start,
-    //                     crossAxisAlignment: CrossAxisAlignment.start,
-    //                     children: [
-    //                       Expanded(
-    //                         flex: 1,
-    //                         child: Container(
-    //                             child: Column(
-    //                           children: [
-    //
-    //
-    //                                 ],
-    //                               ),
-    //                             )
-    //                           ],
-    //                         )),
-    //                       )
-    //                     ])
-    //               ]))))
-    //     ]));
-
-    return WillPopScope(
-        // onWillPop: () => Navigator.pop(, true),
-        onWillPop: () => _willPopCallback(context),
-
-        // showDialog<bool>(
-        //     context: context,
-        //     builder: (c) => AlertDialog(
-        //           title: Text('Warning'),
-        //           content: Text('Do you really want to exit'),
-        //           actions: [
-        //             FlatButton(
-        //               child: Text('Yes'),
-        //               onPressed: () => {
-        //                 _navigateToBackPage(c)
-        //                 // Navigator.push(
-        //                 //   context,
-        //                 //   MaterialPageRoute(
-        //                 //       builder: (context) => CountingApp()),
-        //                 // )
-        //               },
-        //             ),
-        //             FlatButton(
-        //               child: Text('No'),
-        //               onPressed: () => Navigator.pop(c, false),
-        //             ),
-        //           ],
-        //         )
-        // ),
-
-        child: Scaffold(
-            backgroundColor: Colors.black,
-            body: Column(children: <Widget>[
-              if (searchText != "" && count == 0)
-                Expanded(
-                    flex: 3,
-                    child: Container(
-                        child: Padding(
-                            padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
-                            child: Center(
-                              child: TouchableOpacity(
-                                onTap: () {
-                                  _launchPlayStore(userNameController.text);
-                                },
-                                child: Text(
-                                  'search for ${userNameController.text} in play store. ',
-                                  style: TextStyle(
-                                    color: Colors.blue,
-                                    fontSize: 20,
-                                    fontFamily: 'Montserrat',
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                              ),
-                            )))),
-              if (list.length == 0)
-                Expanded(
-                  flex: 5,
-                  child: Container(
-                    child: Center(
-                      child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Image.asset(
-                              'assets/images/dino.gif',
-                              height: 250,
-                              width: 250,
-                              fit: BoxFit.contain,
-                            ),
-                            Text(
-                              'Loading...',
-                              style: TextStyle(color: Colors.white),
-                            )
-                          ]),
-                    ),
-                  ),
-                ),
-              if (count != 0)
-                Expanded(
-                    flex: 3,
-                    child: Container(
-                      width: double.infinity,
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
-                          child: Column(
-                            children: <Widget>[
-                              for (var i in list)
-                                if (i.appName.toLowerCase().contains(
-                                    searchText.toString().toLowerCase()))
-                                  HeaderSection(
-                                      title: i.appName,
-                                      icon: i.icon,
-                                      packageName: i.packageName),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )),
-              Expanded(
-                  flex: 0,
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.max,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        Container(
-                          // height: 10,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              // Row(
-                              //   crossAxisAlignment: CrossAxisAlignment.center,
-                              //   mainAxisAlignment:
-                              //       MainAxisAlignment.spaceBetween,
-                              //   children: <Widget>[
-                              //     Text(
-                              //       'ff',
-                              //       style: TextStyle(color: Colors.white),
-                              //     ),
-                              //     Text(
-                              //       'ff',
-                              //       style: TextStyle(color: Colors.white),
-                              //     )
-                              //   ],
-                              // ),
-                              Padding(
-                                  padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
-                                  child: TextFormField(
-                                    decoration: InputDecoration(
-                                        suffixIcon: IconButton(
-                                          onPressed: () =>
-                                              {userNameController.clear()},
-                                          icon: Icon(Icons.clear),
-                                        ),
-                                        hintText: 'Please enter a search term',
-                                        hintStyle: TextStyle(
-                                          fontSize: 15.0,
-                                          color: Colors.grey,
-                                        )),
-                                    controller: userNameController,
-                                    keyboardType: TextInputType.emailAddress,
-                                    onFieldSubmitted: (value) {
-                                      //Validator
-                                    },
-                                    // onChanged: (value) => {count = 0},
-                                    // onChanged: (value) => {
-                                    //   // searchText = value,
-                                    //   setState(() {
-                                    //     // listComplete = list;
-                                    //     searchText = value;
-                                    //     //print(_test1);
-                                    //   })
-                                    //   // getAppsData(value)
-                                    // },
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 30,
-                                        fontFamily: 'Montserrat'),
-                                    // validator: (value) {
-                                    //   if (value.isEmpty ||
-                                    //       !RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-                                    //           .hasMatch(value)) {
-                                    //     return 'Enter a valid email!';
-                                    //   }
-                                    //   return null;
-                                    // },
-                                  )),
-                              Padding(
-                                padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
-                                child: Container(
-                                  // margin: EdgeInsets.symmetric(vertical: 10.0),
-                                  height: selectedList.length > 0 ? 60.0 : 0,
-                                  child: ListView(
-                                    scrollDirection: Axis.horizontal,
-                                    children: <Widget>[
-                                      for (var i in selectedList)
-                                        RoundedButtons(
-                                          title: i['title'],
-                                          // icon: i.icon,
-                                          packageName: i['packageName'],
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                              //       ListView(
-                              // // This next line does the trick.
-                              // scrollDirection: Axis.horizontal,
-                              // children: <Widget>[
-                              //   Container(
-                              //     width: 160.0,
-                              //     color: Colors.red,
-                              //   ),
-                              //   Container(
-                              //     width: 160.0,
-                              //     color: Colors.blue,
-                              //   ),
-                              //   Container(
-                              //     width: 160.0,
-                              //     color: Colors.green,
-                              //   ),
-                              //   Container(
-                              //     width: 160.0,
-                              //     color: Colors.yellow,
-                              //   ),
-                              //   Container(
-                              //     width: 160.0,
-                              //     color: Colors.orange,
-                              //   ),
-                              // ])
-                            ],
-                          ),
-                        ),
-                      ])),
-            ])));
   }
 }

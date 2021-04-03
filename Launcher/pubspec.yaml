@@ -26,6 +26,9 @@ dependencies:
   url_launcher : 6.0.3
   lodash_dart: ^0.0.7
   battery : 2.0.1
+  page_transition: "^1.1.7+6"
+  shared_preferences: ^2.0.5
+
 
   intent : 1.4.0
   flutter:

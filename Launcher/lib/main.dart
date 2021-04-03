@@ -1,13 +1,23 @@
+import 'dart:async';
 import 'dart:ui';
 
+import 'package:device_apps/device_apps.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:page_transition/page_transition.dart';
 import 'newPage.dart';
 import 'package:intent/intent.dart' as android_intent;
 import 'package:intent/action.dart' as android_action;
 import 'package:url_launcher/url_launcher.dart';
+// import 'package:hardware_buttons/hardware_buttons.dart';
+
+StreamSubscription _volumeButtonSubscription;
 
 void main() {
-  runApp(CountingApp());
+  runApp(MaterialApp(home: CountingApp(), // becomes the route named '/'
+      routes: <String, WidgetBuilder>{
+        '/secondRoute': (BuildContext context) => SecondRoute(),
+      }));
 }
 
 // _launchURL() async {
@@ -145,7 +155,7 @@ class _StartPageState extends State<StartPage>
     // if (!isValid) {
     //   return;
     // }
-    Navigator.of(context).pop();
+    // Navigator.of(context).pop();
     _navigateToNewPage(counter);
     // _showMyDialog(counter);
 
@@ -154,9 +164,14 @@ class _StartPageState extends State<StartPage>
 
   void _navigateToNewPage(counter) {
     Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => SecondRoute()),
-    );
+        context,
+        PageTransition(
+            type: PageTransitionType.bottomToTop,
+            duration: Duration(seconds: 1),
+            child: SecondRoute()));
+    // MaterialPageRoute(builder: (context) {
+    //   return SecondRoute();
+    // }),
   }
 
   void _resetCounter() {
@@ -168,6 +183,11 @@ class _StartPageState extends State<StartPage>
   @override
   void initState() {
     super.initState();
+    // _volumeButtonSubscription =
+    //     volumeButtonEvents.listen((VolumeButtonEvent event) {
+    //   // do something
+    //   // event is either VolumeButtonEvent.VOLUME_UP or VolumeButtonEvent.VOLUME_DOWN
+    // });
     controller =
         AnimationController(duration: const Duration(seconds: 7), vsync: this);
     // #docregion addListener
@@ -188,6 +208,13 @@ class _StartPageState extends State<StartPage>
   void dispose() {
     controller.dispose();
     super.dispose();
+    _volumeButtonSubscription?.cancel();
+  }
+
+  remainSamePage() async {
+    return false;
+    // Route route = MaterialPageRoute(builder: (context) => CountingApp());
+    // Navigator.pushReplacement(context, route);
   }
 
   @override
@@ -205,7 +232,9 @@ class _StartPageState extends State<StartPage>
     TextEditingController passwordController = new TextEditingController();
 
     return WillPopScope(
-        onWillPop: () async => false,
+        // ignore: missing_return
+        onWillPop: () {},
+
         // onWillPop: () => Navigator.pop(),
         // showDialog<bool>(
         //     context: context,
@@ -378,6 +407,8 @@ class _StartPageState extends State<StartPage>
                                           ),
                                         ]),
                                   ]),
+                              onLongPress: () => DeviceApps.openApp(
+                                  "com.google.android.apps.googleassistant"),
                               onPressed: () => _submit(counter: _counter),
                               style: ButtonStyle(
                                 shape: MaterialStateProperty.all<
