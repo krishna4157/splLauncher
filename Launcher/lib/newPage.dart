@@ -9,10 +9,13 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:math';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:device_apps/device_apps.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:installed_apps/app_info.dart';
+import 'package:installed_apps/installed_apps.dart';
 import 'package:launcher/main.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -95,56 +98,48 @@ class SharedPreferencesDemo extends StatefulWidget {
 }
 
 class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
+  Future<List<AppsList>> genCode() {
+    return getAppsList();
+  }
+
+  Future<List<AppsList>> getAppsList() async {
+    if (list == null) {
+      Future<List<AppInfo>> apps =
+          InstalledApps.getInstalledApps(false, true, "");
+
+      List<AppsList> futureList = [];
+      var appsList = await apps;
+      for (var i in appsList) {
+        bool isSystemApp = await InstalledApps.isSystemApp(i.packageName);
+
+        if (isSystemApp && i.name.toLowerCase() == 'phone' || !isSystemApp) {
+          AppsList appsLists = AppsList(i.name, i.packageName, i.icon);
+          futureList.add(appsLists);
+        }
+      }
+
+      futureList.sort((a, b) => a.name
+          .toString()
+          .toLowerCase()
+          .compareTo(b.name.toString().toLowerCase()));
+
+      setStateIfMounted(() {
+        list = futureList;
+        loading = false;
+      });
+      print(list.length);
+      return futureList;
+    } else {
+      return list;
+    }
+  }
+
   void setStateIfMounted(f) {
     if (mounted) setState(f);
   }
 
   Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   Future<Map> _list;
-
-  Future<void> _incrementCounter() async {
-    final SharedPreferences prefs = await _prefs;
-    // final var list = (prefs.getInt('list') ?? 0) + 1;
-    setStateIfMounted(() {
-      loading = true;
-    });
-    Future<List<Application>> apps = DeviceApps.getInstalledApplications(
-      includeAppIcons: true,
-      includeSystemApps: true,
-    );
-
-    list = [];
-    // iconsList = [];
-    var appsList = await apps;
-    for (int i = 0; i < appsList.length; i++) {
-      Application app = appsList[i];
-      if (app.apkFilePath.contains('/data/app') ||
-          app.apkFilePath.contains('/system/priv-app')) {
-        if (!app.appName.contains('com.')) {
-          list.add(app);
-        }
-        // }
-      }
-    }
-
-    list.sort((a, b) => a.appName
-        .toString()
-        .toLowerCase()
-        .compareTo(b.appName.toString().toLowerCase()));
-
-    setStateIfMounted(() {
-      list = list;
-      loading = false;
-    });
-
-    // var tempList = new List<String>.from(list);
-
-    // setStateIfMounted(() {
-    // _list = prefs.setStringList("list", tempList).then((bool success) {
-    //   return _list;
-    //   // });
-    // });
-  }
 
   @override
   void initState() {
@@ -153,7 +148,7 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
       selectedList = selectedList;
     });
     if (list == null) {
-      _incrementCounter();
+      // _incrementCounter();
     }
     userNameController.clear();
     setStateIfMounted(() {
@@ -167,7 +162,7 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
       var c = 0;
       for (int i = 0; i < list.length; i++) {
         if (list[i]
-            .appName
+            .name
             .toLowerCase()
             .contains(searchText.toString().toLowerCase())) {
           c = c + 1;
@@ -191,35 +186,65 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
           Navigator.pushReplacement(
               context,
               PageTransition(
-                  type: PageTransitionType.bottomToTop,
-                  duration: Duration(seconds: 1),
+                  type: PageTransitionType.fade,
+                  duration: Duration(milliseconds: 500),
                   child: CountingApp()));
         },
         child: Scaffold(
             backgroundColor: Colors.black,
             body: Column(children: <Widget>[
-              if (loading == false)
-                Expanded(
-                    flex: 3,
-                    child: Container(
-                      width: double.infinity,
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
-                          child: Column(
-                            children: <Widget>[
-                              for (var i in list)
-                                if (i.appName.toLowerCase().contains(
-                                    searchText.toString().toLowerCase()))
-                                  HeaderSection(
-                                      title: i.appName,
-                                      icon: i.icon,
-                                      packageName: i.packageName),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )),
+              Expanded(
+                flex: 3,
+                child: Container(
+                    child: FutureBuilder(
+                        future: list == null
+                            ? Future.delayed(Duration(seconds: 2), () async {
+                                return getAppsList();
+                              })
+                            : Future.delayed(Duration(seconds: 0), () async {
+                                return await list;
+                              }),
+                        builder:
+                            (BuildContext context, AsyncSnapshot snapshot) {
+                          if (snapshot.data == null) {
+                            return Center(
+                                child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: <Widget>[
+                                Image.asset(
+                                  'assets/images/dino.gif',
+                                  height: 250,
+                                  width: 250,
+                                  fit: BoxFit.contain,
+                                ),
+                                Text(
+                                  'Loading...',
+                                  style: TextStyle(color: Colors.white),
+                                )
+                              ],
+                            ));
+                          } else {
+                            return ListView.builder(
+                                itemCount: snapshot.data.length,
+                                itemBuilder: (BuildContext context, int index) {
+                                  if (snapshot.data[index].name
+                                      .toString()
+                                      .toLowerCase()
+                                      .contains(userNameController.text
+                                          .toLowerCase())) {
+                                    return HeaderSection(
+                                        icon: snapshot.data[index].icon,
+                                        title: snapshot.data[index].name,
+                                        packageName:
+                                            snapshot.data[index].packageName);
+                                  } else {
+                                    return Container();
+                                  }
+                                });
+                          }
+                        })),
+              ),
               if (searchText != "" && count == 0)
                 Expanded(
                     child: Container(
@@ -264,28 +289,6 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                 ),
                               ),
                             )))),
-              if (loading == true)
-                Expanded(
-                  flex: 5,
-                  child: Container(
-                    child: Center(
-                      child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Image.asset(
-                              'assets/images/dino.gif',
-                              height: 250,
-                              width: 250,
-                              fit: BoxFit.contain,
-                            ),
-                            Text(
-                              'Loading...',
-                              style: TextStyle(color: Colors.white),
-                            )
-                          ]),
-                    ),
-                  ),
-                ),
               Expanded(
                   flex: 0,
                   child: Column(
@@ -294,7 +297,6 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: <Widget>[
                         Container(
-                            // height: 10,
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
@@ -325,7 +327,6 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                               Padding(
                                 padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
                                 child: Container(
-                                  // margin: EdgeInsets.symmetric(vertical: 10.0),
                                   height: selectedList.length > 0 ? 60.0 : 0,
                                   child: ListView(
                                     scrollDirection: Axis.horizontal,
@@ -333,7 +334,6 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                       for (var i in selectedList)
                                         RoundedButtons(
                                           title: i['title'],
-                                          // icon: i.icon,
                                           packageName: i['packageName'],
                                         ),
                                     ],
@@ -341,9 +341,17 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                 ),
                               ),
                             ]))
-                      ])),
+                      ]))
             ])));
   }
+}
+
+class AppsList {
+  final String name;
+  final String packageName;
+  final Uint8List icon;
+
+  AppsList(this.name, this.packageName, this.icon);
 }
 
 class HeaderSection extends StatelessWidget {
@@ -356,72 +364,72 @@ class HeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-      Padding(
-          padding: EdgeInsets.all(10),
-          child: TouchableOpacity(
-              activeOpacity: 0.4,
-              onTap: () {
-                var s = {'packageName': packageName, 'title': title};
-                if (selectedList.length > 5) {
-                  selectedList.removeLast();
-                }
-                bool isPackageIncluded = false;
-                selectedList.forEach((element) {
-                  if (element['packageName'] == packageName) {
-                    isPackageIncluded = true;
-                  }
-                });
-                if (isPackageIncluded == false) {
-                  selectedList.insert(0, s);
-                }
-                // if (!selectedList.map(s)) {
-                // Navigator.of(context).pop();
-                Navigator.pushReplacement(
-                    context,
-                    PageTransition(
-                        type: PageTransitionType.bottomToTop,
-                        duration: Duration(seconds: 1),
-                        child: CountingApp()));
-                if (title.toLowerCase() == 'phone') {
-                  _launchCaller("");
-                } else {
-                  DeviceApps.openApp(packageName);
-                }
-              },
-              child: Row(
-                children: [
-                  new Container(),
-                  ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: FadeInImage(
-                        placeholder: MemoryImage(icon),
-                        image: MemoryImage(icon),
-                        fadeInDuration: Duration(milliseconds: 700),
-                        height: 50,
-                        width: 50,
-                      )),
-                  Padding(
-                      padding: EdgeInsets.fromLTRB(10, 0, 0, 0),
-                      child: Row(
-                        children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ))
-                ],
-              )))
+    return Column(children: [
+      TouchableOpacity(
+          onTap: () {
+            var s = {'packageName': packageName, 'title': title};
+            if (selectedList.length > 5) {
+              selectedList.removeLast();
+            }
+            bool isPackageIncluded = false;
+            selectedList.forEach((element) {
+              if (element['packageName'] == packageName) {
+                isPackageIncluded = true;
+              }
+            });
+            if (isPackageIncluded == false) {
+              selectedList.insert(0, s);
+            }
+            Navigator.pushReplacement(
+                context,
+                PageTransition(
+                    type: PageTransitionType.bottomToTop,
+                    duration: Duration(seconds: 1),
+                    child: CountingApp()));
+            if (title.toLowerCase() == 'phone') {
+              _launchCaller("");
+            } else {
+              DeviceApps.openApp(packageName);
+            }
+          },
+          child: Container(
+              color: Colors.black,
+              width: MediaQuery.of(context).size.width,
+              child: Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Row(
+                    children: [
+                      new Container(),
+                      ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: FadeInImage(
+                            placeholder: MemoryImage(icon),
+                            image: MemoryImage(icon),
+                            fadeInDuration: Duration(milliseconds: 700),
+                            height: 50,
+                            width: 50,
+                          )),
+                      Padding(
+                          padding: EdgeInsets.fromLTRB(10, 0, 0, 0),
+                          child: Row(
+                            children: [
+                              Text(
+                                title,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ))
+                    ],
+                  ))))
     ]);
   }
 }
 
+// ignore: must_be_immutable
 class RoundedButtons extends StatelessWidget {
   final String title;
-  // final Uint8List icon;
   final packageName;
 
   bool isPackageIncluded;

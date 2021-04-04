@@ -163,12 +163,16 @@ class _StartPageState extends State<StartPage>
   }
 
   void _navigateToNewPage(counter) {
+    // _showMyDialog(counter);
+    // Future.delayed(Duration(seconds: 10), () {
     Navigator.push(
         context,
         PageTransition(
             type: PageTransitionType.bottomToTop,
-            duration: Duration(seconds: 1),
+            duration: Duration(milliseconds: 300),
             child: SecondRoute()));
+    // });
+
     // MaterialPageRoute(builder: (context) {
     //   return SecondRoute();
     // }),

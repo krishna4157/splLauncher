@@ -28,7 +28,7 @@ dependencies:
   battery : 2.0.1
   page_transition: "^1.1.7+6"
   shared_preferences: ^2.0.5
-
+  installed_apps: 1.1.1 
 
   intent : 1.4.0
   flutter:
