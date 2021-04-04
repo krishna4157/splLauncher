@@ -304,6 +304,7 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                   padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
                                   child: TextFormField(
                                     decoration: InputDecoration(
+                                        prefixIcon: Icon(Icons.search),
                                         suffixIcon: IconButton(
                                           onPressed: () =>
                                               {userNameController.clear()},
