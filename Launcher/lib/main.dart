@@ -2,17 +2,15 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:device_apps/device_apps.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
+import 'package:touchable_opacity/touchable_opacity.dart';
 import 'newPage.dart';
-import 'package:intent/intent.dart' as android_intent;
-import 'package:intent/action.dart' as android_action;
 import 'package:url_launcher/url_launcher.dart';
 // import 'package:hardware_buttons/hardware_buttons.dart';
 
 StreamSubscription _volumeButtonSubscription;
-
+var onChangeIcon = false;
 void main() {
   runApp(MaterialApp(home: CountingApp(), // becomes the route named '/'
       routes: <String, WidgetBuilder>{
@@ -29,8 +27,8 @@ void main() {
 //   //   ..startActivity().catchError((e) => print(e));
 // }
 
-_launchCaller() async {
-  const url = "tel:";
+_launchCaller(val) async {
+  var url = "tel:$val";
   if (await canLaunch(url)) {
     await launch(url);
   } else {
@@ -169,7 +167,7 @@ class _StartPageState extends State<StartPage>
         context,
         PageTransition(
             type: PageTransitionType.bottomToTop,
-            duration: Duration(milliseconds: 300),
+            duration: Duration(milliseconds: 800),
             child: SecondRoute()));
     // });
 
@@ -187,6 +185,9 @@ class _StartPageState extends State<StartPage>
   @override
   void initState() {
     super.initState();
+    setState(() {
+      onChangeIcon = false;
+    });
     // _volumeButtonSubscription =
     //     volumeButtonEvents.listen((VolumeButtonEvent event) {
     //   // do something
@@ -235,9 +236,10 @@ class _StartPageState extends State<StartPage>
     TextEditingController userNameController = new TextEditingController();
     TextEditingController passwordController = new TextEditingController();
 
-    return WillPopScope(
+    return TouchableOpacity(
         // ignore: missing_return
-        onWillPop: () {},
+        // onWillPop: () {},
+        onDoubleTap: () {},
 
         // onWillPop: () => Navigator.pop(),
         // showDialog<bool>(
@@ -315,9 +317,12 @@ class _StartPageState extends State<StartPage>
                                         ]),
                                   ]),
                               onPressed: () {
-                                _launchCaller();
+                                _launchCaller("");
                                 //  UrlLauncher.launch("tel://<phone_number>");
                                 // DeviceApps.openApp("com.android.incallui");
+                              },
+                              onLongPress: () {
+                                _launchCaller('');
                               },
                               // DeviceApps.openApp('com.android.incallui'),
                               style:
@@ -346,73 +351,30 @@ class _StartPageState extends State<StartPage>
 
                           //menu button
                           ConstrainedBox(
-                            constraints:
-                                BoxConstraints.tightFor(width: 50, height: 50),
+                            constraints: BoxConstraints.tightFor(
+                                width: onChangeIcon ? 80 : 50,
+                                height: onChangeIcon ? 80 : 50),
                             child: ElevatedButton(
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: <Widget>[
-                                    Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: <Widget>[
-                                          Icon(
-                                            Icons.circle,
-                                            size: 5,
-                                          ),
-                                          Icon(
-                                            Icons.circle,
-                                            size: 5,
-                                          ),
-                                          Icon(
-                                            Icons.circle,
-                                            size: 5,
-                                          ),
-                                        ]),
-                                    Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: <Widget>[
-                                          Icon(
-                                            Icons.circle,
-                                            size: 5,
-                                          ),
-                                          Icon(
-                                            Icons.circle,
-                                            size: 5,
-                                          ),
-                                          Icon(
-                                            Icons.circle,
-                                            size: 5,
-                                          ),
-                                        ]),
-                                    Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: <Widget>[
-                                          Icon(
-                                            Icons.circle,
-                                            size: 5,
-                                          ),
-                                          Icon(
-                                            Icons.circle,
-                                            size: 5,
-                                          ),
-                                          Icon(
-                                            Icons.circle,
-                                            size: 5,
-                                          ),
-                                        ]),
-                                  ]),
-                              onLongPress: () => DeviceApps.openApp(
-                                  "com.google.android.apps.googleassistant"),
+                              child: onChangeIcon == true
+                                  ? Image.asset(
+                                      'assets/images/ga1.png',
+                                      height: 80,
+                                      width: 80,
+                                      fit: BoxFit.contain,
+                                    )
+                                  : AppDrawerIcon(),
+                              onLongPress: () => {
+                                setState(() {
+                                  onChangeIcon = true;
+                                }),
+                                Future.delayed(Duration(seconds: 1), () {
+                                  DeviceApps.openApp(
+                                      "com.google.android.apps.googleassistant");
+                                  setState(() {
+                                    onChangeIcon = false;
+                                  });
+                                })
+                              },
                               onPressed: () => _submit(counter: _counter),
                               style: ButtonStyle(
                                 shape: MaterialStateProperty.all<
@@ -476,5 +438,67 @@ class _StartPageState extends State<StartPage>
             //   child: Icon(Icons.add),
             // ) // This trailing comma makes auto-formatting nicer for build methods.
             ));
+  }
+}
+
+class AppDrawerIcon extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Icon(
+                  Icons.circle,
+                  size: 5,
+                ),
+                Icon(
+                  Icons.circle,
+                  size: 5,
+                ),
+                Icon(
+                  Icons.circle,
+                  size: 5,
+                ),
+              ]),
+          Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Icon(
+                  Icons.circle,
+                  size: 5,
+                ),
+                Icon(
+                  Icons.circle,
+                  size: 5,
+                ),
+                Icon(
+                  Icons.circle,
+                  size: 5,
+                ),
+              ]),
+          Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Icon(
+                  Icons.circle,
+                  size: 5,
+                ),
+                Icon(
+                  Icons.circle,
+                  size: 5,
+                ),
+                Icon(
+                  Icons.circle,
+                  size: 5,
+                ),
+              ]),
+        ]);
   }
 }

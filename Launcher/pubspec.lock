@@ -163,13 +163,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.6.3"
-  lodash_dart:
-    dependency: "direct main"
-    description:
-      name: lodash_dart
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.0.7"
   matcher:
     dependency: transitive
     description:
@@ -343,6 +336,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.2.0"
+  transparent_image:
+    dependency: "direct main"
+    description:
+      name: transparent_image
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "2.0.0"
   typed_data:
     dependency: transitive
     description:
