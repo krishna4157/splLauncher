@@ -5,14 +5,15 @@
 // ignore_for_file: public_member_api_docs
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui';
 
+import 'package:Smart_Power_Launcher/main.dart';
 import 'package:device_apps/device_apps.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:launcher/main.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:touchable_opacity/touchable_opacity.dart';
@@ -21,7 +22,7 @@ import 'package:url_launcher/url_launcher.dart';
 var list;
 var searchText = "";
 var selectedList = [];
-var loading = false;
+var loading = true;
 var userNameController = new TextEditingController();
 var count = 0;
 
@@ -58,6 +59,25 @@ _launchCaller(String text) async {
   } else {
     throw 'Could not launch $url';
   }
+}
+
+Future<List> getUserInfo(menus) async {
+  List<dynamic> userMap;
+  final prefs = await SharedPreferences.getInstance();
+
+  final String userStr = menus;
+  if (userStr != null) {
+    userMap = jsonDecode(userStr) as List<dynamic>;
+  }
+  if (userMap != null) {
+    final List<dynamic> usersList = userMap;
+    // setState(() {
+    //   list = usersList;
+    // });
+    // dataStored = prefs.getString('isLoaded');
+    return usersList;
+  }
+  return null;
 }
 
 getRandomColors() {
@@ -111,14 +131,16 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
       Future<List<Application>> apps = DeviceApps.getInstalledApplications(
           includeAppIcons: true, includeSystemApps: true);
 
-      List<Application> futureList = [];
+      List<AppsList> futureList = [];
       var appsList = await apps;
       // appsList.remove((k, v) => k.contains('_'));
 
       for (var i in appsList) {
         bool isSystemApp = i.apkFilePath.contains("/data/app/") ? false : true;
         if (isSystemApp && i.appName.toLowerCase() == 'phone' || !isSystemApp) {
-          futureList.add(i);
+          AppsList appsLists = AppsList(i.appName, i.packageName,
+              i is ApplicationWithIcon ? i.icon : null);
+          futureList.add(appsLists);
         }
       }
 
@@ -132,9 +154,12 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
         loading = false;
       });
       // print(list.length);
-      return futureList;
+      // return futureList;
 
-      ///////////////////////////////////////////////////
+      /////////////////////////////////////////////////
+      final prefs = await SharedPreferences.getInstance();
+      // // dataStored = prefs.getString('isLoaded');
+      var menus = prefs.getString('menus');
       // Future<List<AppInfo>> apps =
       //     InstalledApps.getInstalledApps(false, true, "");
 
@@ -158,8 +183,25 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
       //   list = futureList;
       //   loading = false;
       // });
-      // // print(list.length);
-      // return futureList;
+
+      bool result = await prefs.setString('menus', jsonEncode(futureList));
+      // prefs.setString('isLoaded', 'true');
+      print(result);
+
+      // setStateIfMounted(() {
+      //   list = futureList;
+      //   loading = false;
+      // });
+      // dataStored = prefs.getString('isLoaded');
+      // prefs.setString('isLoaded', 'true');
+      var v = await getUserInfo(menus);
+      setStateIfMounted(() {
+        list = v;
+        loading = false;
+      });
+      // return list;
+      // print(list.length);
+      return v;
     } else {
       return list;
     }
@@ -185,26 +227,26 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
     setStateIfMounted(() {
       searchText = "";
     });
-    userNameController.addListener(() {
-      setStateIfMounted(() {
-        searchText = userNameController.text.toString();
-        count = count;
-      });
-      var c = 0;
-      for (int i = 0; i < list.length; i++) {
-        if (list[i]
-            .appName
-            .toLowerCase()
-            .contains(searchText.toString().toLowerCase())) {
-          c = c + 1;
-        }
-      }
+    // userNameController.addListener(() {
+    // setStateIfMounted(() {
+    // searchText = userNameController.text.toString();
+    // count = count;
+    // });
+    // var c = 0;
+    // for (int i = 0; i < list.length; i++) {
+    //   if (list[i]
+    //       .appName
+    //       .toLowerCase()
+    //       .contains(searchText.toString().toLowerCase())) {
+    //     // c = c + 1;
+    //   }
+    // }
 
-      setStateIfMounted(() {
-        count = c;
-        selectedList = selectedList;
-      });
-    });
+    // setStateIfMounted(() {
+    //   count = count;
+    //   selectedList = selectedList;
+    // });
+    // });
   }
 
   @override
@@ -233,7 +275,7 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                             ? Future.delayed(Duration(seconds: 2), () async {
                                 return getAppsList();
                               })
-                            : Future.delayed(Duration(seconds: 0), () async {
+                            : Future.delayed(Duration(seconds: 1), () async {
                                 return await list;
                               }),
                         builder:
@@ -282,38 +324,31 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                           ),
                                           TouchableOpacity(
                                             onTap: () {
-                                              if (userNameController.text
-                                                      .contains('call') ||
-                                                  userNameController.text
-                                                      .contains('+91') ||
+                                              if (searchText.contains('call') ||
+                                                  searchText.contains('+91') ||
                                                   isNumericUsingRegularExpression(
                                                       userNameController
                                                           .text)) {
-                                                _launchCaller(
-                                                    userNameController.text);
+                                                _launchCaller(searchText);
                                               } else {
-                                                _launchPlayStore(
-                                                    userNameController.text);
+                                                _launchPlayStore(searchText);
                                               }
                                             },
                                             child: Text(
                                               isNumericUsingRegularExpression(
                                                           userNameController
                                                               .text) ||
-                                                      userNameController.text
-                                                          .contains('+91')
-                                                  ? userNameController.text
-                                                          .contains('call')
-                                                      ? '"${userNameController.text}" '
-                                                      : 'call "${userNameController.text}" '
-                                                  : userNameController.text
-                                                              .contains(
-                                                                  '.com') ||
+                                                      searchText.contains('+91')
+                                                  ? searchText.contains('call')
+                                                      ? '"$searchText" '
+                                                      : 'call "$searchText" '
+                                                  : searchText.contains(
+                                                              '.com') ||
                                                           userNameController
                                                               .text
                                                               .contains('https')
-                                                      ? 'open "${userNameController.text}" in browser.'
-                                                      : 'search for "${userNameController.text}" in play store. ',
+                                                      ? 'open "$searchText" in browser.'
+                                                      : 'search for "$searchText" in play store. ',
                                               style: TextStyle(
                                                 color: Colors.blue,
                                                 fontSize: 20,
@@ -328,21 +363,40 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                     )));
                           } else {
                             return ListView.builder(
-                                cacheExtent: 9999,
+                                cacheExtent: 999,
                                 itemCount: snapshot.data.length,
                                 itemBuilder: (BuildContext context, int index) {
-                                  if (snapshot.data[index].appName
+                                  if (snapshot.data[index]['appName']
                                       .toString()
                                       .toLowerCase()
-                                      .contains(userNameController.text
-                                          .toLowerCase())) {
+                                      .contains(searchText.toLowerCase())) {
+                                    count = count + 1;
+                                    var icon = Uint8List.fromList(snapshot
+                                        .data[index]['icon']
+                                        .cast<int>());
                                     return HeaderSection(
-                                        icon: snapshot.data[index].icon,
-                                        title: snapshot.data[index].appName,
-                                        packageName:
-                                            snapshot.data[index].packageName);
+                                        icon: icon,
+                                        title: snapshot.data[index]['appName'],
+                                        packageName: snapshot.data[index]
+                                            ['packageName']);
                                   } else {
-                                    return Container();
+                                    var nosearchResult = true;
+                                    for (var i in snapshot.data) {
+                                      if (i['appName']
+                                          .toString()
+                                          .toLowerCase()
+                                          .contains(searchText.toLowerCase())) {
+                                        nosearchResult = false;
+                                      }
+                                    }
+                                    if (nosearchResult == true &&
+                                        searchText != "") {
+                                      count = 0;
+                                    }
+
+                                    return Container(
+                                      color: Colors.black,
+                                    );
                                   }
                                 });
                           }
@@ -362,20 +416,29 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                               Padding(
                                   padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
                                   child: TextFormField(
+                                    onChanged: (value) {
+                                      searchText = value;
+                                      setState(() {
+                                        searchText = searchText;
+                                        count = count;
+                                      });
+                                    },
                                     focusNode: focus,
                                     decoration: InputDecoration(
                                         prefixIcon: Icon(
                                           Icons.search,
                                           color: Colors.blueAccent,
                                         ),
-                                        suffixIcon: userNameController
-                                                .text.isNotEmpty
+                                        suffixIcon: searchText != ""
                                             ? IconButton(
                                                 onPressed: () => {
                                                   SchedulerBinding.instance
                                                       .addPostFrameCallback(
                                                           (_) {
                                                     focus.unfocus();
+                                                    setState(() {
+                                                      searchText = "";
+                                                    });
                                                     userNameController.clear();
                                                   }),
                                                 },
@@ -423,40 +486,71 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
   }
 }
 
+// class AppsList {
+//   final String appName;
+//   final String packageName;
+//   final Uint8List icon;
+
+//   AppsList(this.appName, this.packageName, this.icon);
+// }
+
 class AppsList {
-  final String appName;
-  final String packageName;
-  final Uint8List icon;
+  String appName;
+  String packageName;
+  Uint8List icon;
 
   AppsList(this.appName, this.packageName, this.icon);
-}
 
-class CustomApplicationList {
-  final String appName;
-  final String packageName;
-  final Uint8List icon;
+  AppsList.fromJson(Map<String, dynamic> json) {
+    appName = json['appName'];
+    packageName = json['packageName'];
+    icon = json['icon'];
+  }
 
-  CustomApplicationList(this.appName, this.packageName, this.icon);
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = Map<String, dynamic>();
+    data['appName'] = this.appName;
+    data['packageName'] = this.packageName;
+    data['icon'] = this.icon;
+    return data;
+  }
+
+  @override
+  String toString() {
+    return '{ "appName": $appName, "packageName": $packageName, "icon": $icon }';
+  }
 }
 
 class HeaderSection extends StatelessWidget {
   final String title;
   final Uint8List icon;
-  final packageName;
+  final String packageName;
 
   const HeaderSection({Key key, this.title, this.icon, this.packageName})
       : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    Widget image = FadeInImage(
-      placeholder: MemoryImage(icon),
-      image: MemoryImage(icon),
-      fadeInDuration: Duration(milliseconds: 50),
-      // fadeOutDuration: Duration(milliseconds: 50),
+    Widget image = Image.memory(
+      icon,
       height: 50,
       width: 50,
     );
+    //  FadeInImage(
+    //   placeholder: MemoryImage(icon),
+    //   image: MemoryImage(icon),
+    //   height: 50,
+    //   width: 50,
+    // );
+    // FadeInImage(
+    //   placeholder:
+    // MemoryImage(icon),
+    // image: MemoryImage(icon),
+    // fadeInDuration: Duration(milliseconds: 50),
+    // // fadeOutDuration: Duration(milliseconds: 50),
+    // height: 50,
+    // width: 50,
+    // );
 
     // FadeInImage(
     //   placeholder: MemoryImage(icon),
@@ -506,15 +600,7 @@ class HeaderSection extends StatelessWidget {
                     children: [
                       new Container(),
                       ClipRRect(
-                          borderRadius: BorderRadius.circular(30),
-                          child: FadeInImage(
-                            placeholder: MemoryImage(icon),
-                            image: MemoryImage(icon),
-                            // fadeInDuration: Duration(milliseconds: 50),
-                            fadeOutDuration: Duration(milliseconds: 500),
-                            height: 50,
-                            width: 50,
-                          )
+                          borderRadius: BorderRadius.circular(30), child: image
                           //
                           // child: Image.memory(icon),
                           ),
@@ -539,7 +625,7 @@ class HeaderSection extends StatelessWidget {
 // ignore: must_be_immutable
 class RoundedButtons extends StatelessWidget {
   final String title;
-  final packageName;
+  final String packageName;
 
   bool isPackageIncluded;
   RoundedButtons({Key key, this.title, this.packageName}) : super(key: key);
