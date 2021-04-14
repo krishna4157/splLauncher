@@ -97,89 +97,67 @@ class StartPage extends StatefulWidget {
 class _StartPageState extends State<StartPage>
     with SingleTickerProviderStateMixin {
   int _counter = 0;
-  var _formKey = GlobalKey<FormState>();
   Animation<double> animation;
   AnimationController controller;
   Animation<double> animation2;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  // void _incrementCounter() {
+  //   setState(() {
+  //     // This call to setState tells the Flutter framework that something has
+  //     // changed in this State, which causes it to rerun the build method below
+  //     // so that the display can reflect the updated values. If we changed
+  //     // _counter without calling setState(), then the build method would not be
+  //     // called again, and so nothing would appear to happen.
+  //     _counter++;
+  //   });
+  // }
 
-  Future<void> _showMyDialog(counter) async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false, // user must tap button!
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('SUCCESS'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text(''),
-                Text('do you want to save these details ?'),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Approve'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _navigateToNewPage(counter);
-              },
-            ),
-            TextButton(
-              child: Text('Deny'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            )
-          ],
-        );
-      },
-    );
-  }
+  // Future<void> _showMyDialog(counter) async {
+  //   return showDialog<void>(
+  //     context: context,
+  //     barrierDismissible: false, // user must tap button!
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         title: Text('SUCCESS'),
+  //         content: SingleChildScrollView(
+  //           child: ListBody(
+  //             children: <Widget>[
+  //               Text(''),
+  //               Text('do you want to save these details ?'),
+  //             ],
+  //           ),
+  //         ),
+  //         actions: <Widget>[
+  //           TextButton(
+  //             child: Text('Approve'),
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //               _navigateToNewPage(counter);
+  //             },
+  //           ),
+  //           TextButton(
+  //             child: Text('Deny'),
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //             },
+  //           )
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   void _submit({int counter}) {
-    // final isValid = _formKey.currentState.validate();
-    // if (!isValid) {
-    //   return;
-    // }
-    // Navigator.of(context).pop();
     _navigateToNewPage(counter);
-    // _showMyDialog(counter);
-
-    // _formKey.currentState.save();
   }
 
   void _navigateToNewPage(counter) {
-    // _showMyDialog(counter);
-    // Future.delayed(Duration(seconds: 10), () {
     Navigator.push(
         context,
         PageTransition(
             type: PageTransitionType.bottomToTop,
-            duration: Duration(milliseconds: 800),
+            duration: Duration(milliseconds: 300),
             child: SecondRoute()));
-    // });
-
-    // MaterialPageRoute(builder: (context) {
-    //   return SecondRoute();
-    // }),
-  }
-
-  void _resetCounter() {
-    setState(() {
-      _counter = 0;
-    });
   }
 
   @override
@@ -188,14 +166,8 @@ class _StartPageState extends State<StartPage>
     setState(() {
       onChangeIcon = false;
     });
-    // _volumeButtonSubscription =
-    //     volumeButtonEvents.listen((VolumeButtonEvent event) {
-    //   // do something
-    //   // event is either VolumeButtonEvent.VOLUME_UP or VolumeButtonEvent.VOLUME_DOWN
-    // });
     controller =
         AnimationController(duration: const Duration(seconds: 7), vsync: this);
-    // #docregion addListener
     animation = Tween<double>(begin: 0, end: 400).animate(controller);
     animation2 = Tween<double>(begin: 0, end: 300).animate(controller)
       ..addListener(() {
@@ -218,8 +190,6 @@ class _StartPageState extends State<StartPage>
 
   remainSamePage() async {
     return false;
-    // Route route = MaterialPageRoute(builder: (context) => CountingApp());
-    // Navigator.pushReplacement(context, route);
   }
 
   @override
@@ -233,13 +203,12 @@ class _StartPageState extends State<StartPage>
     MediaQueryData queryData;
     queryData = MediaQuery.of(context);
 
-    TextEditingController userNameController = new TextEditingController();
-    TextEditingController passwordController = new TextEditingController();
-
-    return TouchableOpacity(
+    return WillPopScope(
         // ignore: missing_return
-        // onWillPop: () {},
-        onDoubleTap: () {},
+        onWillPop: () {
+          return remainSamePage();
+        },
+        // onDoubleTap: () {},
 
         // onWillPop: () => Navigator.pop(),
         // showDialog<bool>(
@@ -313,6 +282,7 @@ class _StartPageState extends State<StartPage>
                                           Icon(
                                             Icons.phone,
                                             size: 25,
+                                            color: Colors.blueAccent,
                                           ),
                                         ]),
                                   ]),
@@ -405,7 +375,12 @@ class _StartPageState extends State<StartPage>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[Icon(Icons.message)],
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.message,
+                                    color: Colors.orangeAccent,
+                                  )
+                                ],
                               ),
                               style: ButtonStyle(
                                 shape: MaterialStateProperty.all<

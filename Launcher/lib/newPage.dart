@@ -125,7 +125,11 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
   }
 
   Future<List> getAppsList() async {
-    if (list == null) {
+    final prefs = await SharedPreferences.getInstance();
+    // // dataStored = prefs.getString('isLoaded');
+    var menus = prefs.getString('menus');
+
+    if (list == null && menus == null) {
       //     // await DeviceApps.getInstalledApplications();
 
       Future<List<Application>> apps = DeviceApps.getInstalledApplications(
@@ -137,7 +141,9 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
 
       for (var i in appsList) {
         bool isSystemApp = i.apkFilePath.contains("/data/app/") ? false : true;
-        if (isSystemApp && i.appName.toLowerCase() == 'phone' || !isSystemApp) {
+        if (i.appName.toLowerCase() == 'gallery' ||
+            isSystemApp && i.appName.toLowerCase() == 'phone' ||
+            !isSystemApp) {
           AppsList appsLists = AppsList(i.appName, i.packageName,
               i is ApplicationWithIcon ? i.icon : null);
           futureList.add(appsLists);
@@ -157,9 +163,6 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
       // return futureList;
 
       /////////////////////////////////////////////////
-      final prefs = await SharedPreferences.getInstance();
-      // // dataStored = prefs.getString('isLoaded');
-      var menus = prefs.getString('menus');
       // Future<List<AppInfo>> apps =
       //     InstalledApps.getInstalledApps(false, true, "");
 
@@ -203,7 +206,16 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
       // print(list.length);
       return v;
     } else {
-      return list;
+      if (list != null) {
+        return list;
+      } else {
+        var v = await getUserInfo(menus);
+        setStateIfMounted(() {
+          list = v;
+          loading = false;
+        });
+        return v;
+      }
     }
   }
 
@@ -374,7 +386,7 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                     var icon = Uint8List.fromList(snapshot
                                         .data[index]['icon']
                                         .cast<int>());
-                                    return HeaderSection(
+                                    return AppListGenerator(
                                         icon: icon,
                                         title: snapshot.data[index]['appName'],
                                         packageName: snapshot.data[index]
@@ -472,7 +484,7 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                     scrollDirection: Axis.horizontal,
                                     children: <Widget>[
                                       for (var i in selectedList)
-                                        RoundedButtons(
+                                        RecentButtons(
                                           title: i['title'],
                                           packageName: i['packageName'],
                                         ),
@@ -521,12 +533,12 @@ class AppsList {
   }
 }
 
-class HeaderSection extends StatelessWidget {
+class AppListGenerator extends StatelessWidget {
   final String title;
   final Uint8List icon;
   final String packageName;
 
-  const HeaderSection({Key key, this.title, this.icon, this.packageName})
+  const AppListGenerator({Key key, this.title, this.icon, this.packageName})
       : super(key: key);
 
   @override
@@ -623,12 +635,12 @@ class HeaderSection extends StatelessWidget {
 }
 
 // ignore: must_be_immutable
-class RoundedButtons extends StatelessWidget {
+class RecentButtons extends StatelessWidget {
   final String title;
   final String packageName;
 
   bool isPackageIncluded;
-  RoundedButtons({Key key, this.title, this.packageName}) : super(key: key);
+  RecentButtons({Key key, this.title, this.packageName}) : super(key: key);
   final Color color = getRandomColors();
 
   get icon => null;
