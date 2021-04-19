@@ -25,7 +25,7 @@ var selectedList = [];
 var loading = true;
 var userNameController = new TextEditingController();
 var count = 0;
-
+Timer timer;
 bool isNumericUsingRegularExpression(String string) {
   final numericRegex = RegExp(r'^-?(([0-9]*)|(([0-9]*)\.([0-9]*)))$');
 
@@ -120,16 +120,16 @@ class SharedPreferencesDemo extends StatefulWidget {
 }
 
 class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
-  Future<List> genCode() {
-    return getAppsList();
-  }
+  // Future<List> genCode() {
+  //   return getAppsList();
+  // }
 
   Future<List> getAppsList() async {
     final prefs = await SharedPreferences.getInstance();
     // // dataStored = prefs.getString('isLoaded');
     var menus = prefs.getString('menus');
 
-    if (list == null && menus == null) {
+    if (list == null || menus == null) {
       //     // await DeviceApps.getInstalledApplications();
 
       Future<List<Application>> apps = DeviceApps.getInstalledApplications(
@@ -155,10 +155,9 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
           .toLowerCase()
           .compareTo(b.appName.toString().toLowerCase()));
 
-      setStateIfMounted(() {
-        list = futureList;
-        loading = false;
-      });
+      // setStateIfMounted(() {
+      //   list = futureList;
+      // });
       // print(list.length);
       // return futureList;
 
@@ -189,7 +188,7 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
 
       bool result = await prefs.setString('menus', jsonEncode(futureList));
       // prefs.setString('isLoaded', 'true');
-      print(result);
+      // print(result);
 
       // setStateIfMounted(() {
       //   list = futureList;
@@ -200,20 +199,26 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
       var v = await getUserInfo(menus);
       setStateIfMounted(() {
         list = v;
-        loading = false;
       });
+
       // return list;
       // print(list.length);
       return v;
     } else {
       if (list != null) {
-        return list;
+        // return list;
+        var v = await getUserInfo(menus);
+        // setStateIfMounted(() {
+        //   list = v;
+        //   loading = false;
+        // });
+        return v;
       } else {
         var v = await getUserInfo(menus);
-        setStateIfMounted(() {
-          list = v;
-          loading = false;
-        });
+        // setStateIfMounted(() {
+        //   list = v;
+        //   loading = false;
+        // });
         return v;
       }
     }
@@ -223,12 +228,140 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
     if (mounted) setState(f);
   }
 
+  // Future checkInstalledApps() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   var menus = prefs.getString('menus');
+  //   if (menus != null) {
+  //     var v = await getUserInfo(menus);
+  //     Future<List<Application>> apps = DeviceApps.getInstalledApplications(
+  //         includeAppIcons: true, includeSystemApps: true);
+
+  //     List futureList = [];
+  //     var appsList = await apps;
+  //     // appsList.remove((k, v) => k.contains('_'));
+  //     var count = 0;
+  //     for (var i in appsList) {
+  //       bool isSystemApp = i.apkFilePath.contains("/data/app/") ? false : true;
+  //       if (i.appName.toLowerCase() == 'gallery' ||
+  //           isSystemApp && i.appName.toLowerCase() == 'phone' ||
+  //           !isSystemApp) {
+  //         var index =
+  //             v.indexWhere((element) => element['appName'] == i.appName);
+
+  //         if (index == -1) {
+  //           var s = {
+  //             'appName': i.appName,
+  //             'packageName': i.packageName,
+  //             'icon': i is ApplicationWithIcon ? i.icon : null
+  //           };
+  //           futureList.add(s);
+  //           if (futureList.length != 0) {
+  //             v.add(futureList[0]);
+
+  //             v.sort((a, b) => a['appName']
+  //                 .toString()
+  //                 .toLowerCase()
+  //                 .compareTo(b['appName'].toString().toLowerCase()));
+
+  //             bool result = await prefs.setString('menus', jsonEncode(v));
+  //             print(result);
+  //           }
+  //         }
+  //       }
+  //     }
+  //     // prefs.setString('isLoaded', 'true');
+
+  //     //
+
+  //     // futureList.sort((a, b) => a.appName
+  //     //     .toString()
+  //     //     .toLowerCase()
+  //     //     .compareTo(b.appName.toString().toLowerCase()));
+
+  //     // setStateIfMounted(() {
+  //     //   list = futureList;
+  //     //   loading = false;
+  //     // });
+  //     // print(list.length);
+  //     // return futureList;
+
+  //     /////////////////////////////////////////////////
+  //     // Future<List<AppInfo>> apps =
+  //     //     InstalledApps.getInstalledApps(false, true, "");
+
+  //     // List<AppsList> futureList = [];
+  //     // var appsList = await apps;
+  //     // for (var i in appsList) {
+  //     //   bool isSystemApp = await InstalledApps.isSystemApp(i.packageName);
+
+  //     //   if (isSystemApp && i.appName.toLowerCase() == 'phone' || !isSystemApp) {
+  //     //     AppsList appsLists = AppsList(i.appName, i.packageName, i.icon);
+  //     //     futureList.add(appsLists);
+  //     //   }
+  //     // }
+
+  //     // futureList.sort((a, b) => a.appName
+  //     //     .toString()
+  //     //     .toLowerCase()
+  //     //     .compareTo(b.appName.toString().toLowerCase()));
+
+  //     // setStateIfMounted(() {
+  //     //   list = futureList;
+  //     //   loading = false;
+  //     // });
+
+  //     // bool result = await prefs.setString('menus', jsonEncode(futureList));
+  //     // prefs.setString('isLoaded', 'true');
+  //     // print(result);
+
+  //     // setStateIfMounted(() {
+  //     //   list = futureList;
+  //     //   loading = false;
+  //     // });
+  //     // dataStored = prefs.getString('isLoaded');
+  //     // prefs.setString('isLoaded', 'true');
+  //     // setStateIfMounted(() {
+  //     //   list = v;
+  //     //   loading = false;
+  //     // });
+  //     // return list;
+  //     // print(list.length);
+  //     // return v;
+  //   }
+  // }
+  //
+  startTimer() async {
+    timer = Timer.periodic(Duration(seconds: 1), (Timer t) => updateLoading());
+  }
+
+  updateLoading() async {
+    final prefs = await SharedPreferences.getInstance();
+    var prevLoading = prefs.getBool('loading');
+    var menus = prefs.getString('menus');
+    var isRecentAppInstalled = prefs.getBool('isRecentAppInstalled');
+
+    if (prevLoading != loading || loading == true) {
+      var v = await getUserInfo(menus);
+      if (isRecentAppInstalled == true) {
+        setStateIfMounted(() {
+          list = v;
+        });
+        await prefs.setBool('isRecentAppInstalled', false);
+      }
+      setStateIfMounted(() {
+        loading = prevLoading;
+      });
+    }
+  }
+
   Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   Future<Map> _list;
 
   @override
   void initState() {
     super.initState();
+    // checkInstalledApps();
+    startTimer();
     setStateIfMounted(() {
       selectedList = selectedList;
     });
@@ -266,7 +399,9 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
     FocusNode focus = FocusNode();
     return Dismissible(
         // Show a red background as the item is swiped away.
-        background: CountingApp(),
+        background: Container(
+          color: Colors.black,
+        ),
         key: Key('drawer'),
         onDismissed: (direction) {
           Navigator.pushReplacement(
@@ -285,14 +420,23 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                     child: FutureBuilder(
                         future: list == null
                             ? Future.delayed(Duration(seconds: 2), () async {
-                                return getAppsList();
+                                if (loading == false) {
+                                  return getAppsList();
+                                }
                               })
-                            : Future.delayed(Duration(seconds: 1), () async {
-                                return await list;
+                            : Future.delayed(Duration(milliseconds: 400),
+                                () async {
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                var menus = prefs.getString('menus');
+                                if (loading == false) {
+                                  return await getUserInfo(menus);
+                                }
+                                // return await list;
                               }),
                         builder:
                             (BuildContext context, AsyncSnapshot snapshot) {
-                          if (snapshot.data == null) {
+                          if (snapshot.data == null || loading != false) {
                             return Center(
                                 child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -374,6 +518,7 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                       ),
                                     )));
                           } else {
+                            //
                             return ListView.builder(
                                 cacheExtent: 999,
                                 itemCount: snapshot.data.length,
@@ -430,9 +575,12 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                   child: TextFormField(
                                     onChanged: (value) {
                                       searchText = value;
-                                      setState(() {
-                                        searchText = searchText;
-                                        count = count;
+                                      Future.delayed(
+                                          Duration(milliseconds: 500), () {
+                                        setState(() {
+                                          searchText = searchText;
+                                          count = count;
+                                        });
                                       });
                                     },
                                     focusNode: focus,
@@ -603,7 +751,8 @@ class AppListGenerator extends StatelessWidget {
               DeviceApps.openApp(packageName);
             }
           },
-          child: Container(
+          child: AnimatedContainer(
+              duration: Duration(seconds: 5),
               color: Colors.black,
               width: MediaQuery.of(context).size.width,
               child: Padding(
