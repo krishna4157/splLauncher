@@ -161,7 +161,7 @@ class MyClipPath extends AnimatedWidget {
 
 void setInitialValue() async {
   final prefs = await SharedPreferences.getInstance();
-  prefs.setInt('startCount', 0);
+  prefs.setString('prevChargeState', 'charge');
 }
 
 class BottomWaveClipper extends CustomClipper<Path> {
@@ -250,6 +250,7 @@ class _MyAnimationState extends State<MyAnimation>
     final prefs = await SharedPreferences.getInstance();
     // var showChargeAtFirstTime = prefs.getInt('startCount');
     prefs.setInt('startCount', 0);
+    prefs.setString('prevChargeState', 'charge');
     // });
   }
 
