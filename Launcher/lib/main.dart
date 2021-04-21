@@ -176,6 +176,11 @@ class _StartPageState extends State<StartPage>
         Duration(seconds: 10), (Timer t) => checkInstalledApps());
   }
 
+  void setPrevChargeState() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('prevChargeState', 'disCharge');
+  }
+
   StreamSubscription<BatteryState> _batteryStateSubscription;
   var _battery = new Battery();
   Timer timer;
@@ -184,12 +189,26 @@ class _StartPageState extends State<StartPage>
   void initState() {
     super.initState();
     checkInstalledApps();
-    navigateIfCharging();
+
     // startTimer();
 
     // checkInstalledApps();
     setState(() {
       onChangeIcon = false;
+    });
+    _batteryStateSubscription =
+        _battery.onBatteryStateChanged.listen((BatteryState state) {
+      if (state == BatteryState.charging) {
+        setState(() {
+          charging = true;
+        });
+        navigateToCharging();
+      } else {
+        setState(() {
+          charging = false;
+        });
+        setPrevChargeState();
+      }
     });
     controller =
         AnimationController(duration: const Duration(seconds: 7), vsync: this);
@@ -204,22 +223,6 @@ class _StartPageState extends State<StartPage>
       });
     // #enddocregion addListener
     controller.forward();
-  }
-
-  navigateIfCharging() {
-    _batteryStateSubscription =
-        _battery.onBatteryStateChanged.listen((BatteryState state) {
-      if (state == BatteryState.charging) {
-        setState(() {
-          charging = true;
-        });
-        navigateToCharging();
-      } else {
-        setState(() {
-          charging = false;
-        });
-      }
-    });
   }
 
   changeMenu(event) async {
@@ -410,8 +413,9 @@ class _StartPageState extends State<StartPage>
   navigateToCharging() async {
     final prefs = await SharedPreferences.getInstance();
     var showChargeAtFirstTime = prefs.getInt('startCount');
-
-    if (showChargeAtFirstTime == null || showChargeAtFirstTime == 0) {
+    var isPrevCharge = prefs.getString('prevChargeState');
+    if ((isPrevCharge == "disCharge" && charging == true) ||
+        isPrevCharge == null) {
       Navigator.push(
           context,
           PageTransition(
@@ -488,7 +492,6 @@ class _StartPageState extends State<StartPage>
                 'Visibility Gained.'
                 '\nIt means the widget is now visible within your app.',
               );
-              // navigateToCharging();
             },
             onForegroundLost: () {
               print(
@@ -500,7 +503,6 @@ class _StartPageState extends State<StartPage>
             },
             onForegroundGained: () {
               checkInstalledApps();
-              navigateToCharging();
             },
             child: TouchableOpacity(
                 onDoubleTap: () {
