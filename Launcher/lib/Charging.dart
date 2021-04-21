@@ -41,6 +41,7 @@ class MyClipPath extends AnimatedWidget {
   Widget build(BuildContext context) {
     return TouchableOpacity(
       onTap: () {
+        setInitialValue();
         Navigator.pushReplacement(
             context,
             PageTransition(
@@ -143,14 +144,24 @@ class MyClipPath extends AnimatedWidget {
           ],
         ),
         Center(
-          child: Text(
-            '$batteryPercentage',
-            style: TextStyle(color: Colors.white, fontSize: height / 4),
-          ),
-        )
+            child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text('$batteryPercentage',
+                style: TextStyle(color: Colors.white, fontSize: height / 6)),
+            Text('tap to dismiss',
+                style: TextStyle(color: Colors.white, fontSize: 15.0))
+          ],
+        ))
       ]),
     );
   }
+}
+
+void setInitialValue() async {
+  final prefs = await SharedPreferences.getInstance();
+  prefs.setInt('startCount', 0);
 }
 
 class BottomWaveClipper extends CustomClipper<Path> {

@@ -25,6 +25,9 @@ var selectedList = [];
 var loading = true;
 var userNameController = new TextEditingController();
 var count = 0;
+var _visible = true;
+var isListVisible = false;
+var noAppsFound = false;
 Timer timer;
 bool isNumericUsingRegularExpression(String string) {
   final numericRegex = RegExp(r'^-?(([0-9]*)|(([0-9]*)\.([0-9]*)))$');
@@ -116,20 +119,23 @@ class SharedPreferencesDemo extends StatefulWidget {
   SharedPreferencesDemo({Key key}) : super(key: key);
 
   @override
-  SharedPreferencesDemoState createState() => SharedPreferencesDemoState();
+  _SharedPreferencesDemoState createState() => _SharedPreferencesDemoState();
 }
 
-class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
+class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
+    with TickerProviderStateMixin {
   // Future<List> genCode() {
   //   return getAppsList();
   // }
 
-  Future<List> getAppsList() async {
+  Stream<List> getAppsList() async* {
     final prefs = await SharedPreferences.getInstance();
     // // dataStored = prefs.getString('isLoaded');
     var menus = prefs.getString('menus');
 
-    if (list == null || menus == null) {
+    _visible = true;
+
+    if (list == null && menus == null) {
       //     // await DeviceApps.getInstalledApplications();
 
       Future<List<Application>> apps = DeviceApps.getInstalledApplications(
@@ -196,30 +202,48 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
       // });
       // dataStored = prefs.getString('isLoaded');
       // prefs.setString('isLoaded', 'true');
-      var v = await getUserInfo(menus);
+      var v = getUserInfo(menus);
       setStateIfMounted(() {
         list = v;
+        _visible = false;
       });
-
+      // Future.delayed(Duration(seconds: 1), () {
+      //   _visible = false;
+      // });
       // return list;
       // print(list.length);
-      return v;
+      _visible = false;
+      _controller.forward();
+      yield* Stream.fromFuture(v);
     } else {
       if (list != null) {
         // return list;
-        var v = await getUserInfo(menus);
+        var v = getUserInfo(menus);
         // setStateIfMounted(() {
         //   list = v;
         //   loading = false;
         // });
-        return v;
+        // Future.delayed(Duration(seconds: 1), () {
+        //   _visible = false;
+        // });
+        _controller.forward();
+        _visible = false;
+        yield* Stream.fromFuture(v);
       } else {
-        var v = await getUserInfo(menus);
+        var menus = prefs.getString('menus');
+        var v = getUserInfo(menus);
         // setStateIfMounted(() {
         //   list = v;
         //   loading = false;
         // });
-        return v;
+        // Future.delayed(Duration(seconds: 1), () {
+        //   _visible = false;
+        // });
+        //
+        _controller.forward();
+        _visible = false;
+
+        yield* Stream.fromFuture(v);
       }
     }
   }
@@ -338,33 +362,97 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
     final prefs = await SharedPreferences.getInstance();
     var prevLoading = prefs.getBool('loading');
     var menus = prefs.getString('menus');
+    Future.delayed(Duration(seconds: 5), () {
+      if (userNameController.text != searchText) {
+        // setStateIfMounted(() {
+        // searchText = userNameController.text;
+        // count = count;
+        // noAppsFound = false;
+        // });
+        reset();
+      }
+    });
+
     var isRecentAppInstalled = prefs.getBool('isRecentAppInstalled');
+
+    if (isRecentAppInstalled) {
+      await prefs.setBool('isRecentAppInstalled', false);
+      setStateIfMounted(() {});
+    }
 
     if (prevLoading != loading || loading == true) {
       var v = await getUserInfo(menus);
+      setStateIfMounted(() {
+        loading = prevLoading;
+      });
       if (isRecentAppInstalled == true) {
         setStateIfMounted(() {
           list = v;
         });
         await prefs.setBool('isRecentAppInstalled', false);
       }
-      setStateIfMounted(() {
-        loading = prevLoading;
-      });
     }
   }
 
-  Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
-  Future<Map> _list;
+  // onChangeVisibility() {
+  //   isListVisible = true;
+  // }
+
+  AnimationController _controller;
+  AnimationController _controller1;
+  Animation<double> animation2;
+  Animation<double> animation;
+  final _debouncer = new Debouncer(milliseconds: 500);
+  @override
+  void dispose() {
+    super.dispose();
+    _controller.dispose();
+    reset();
+  }
+
+  void reset() {
+    _controller1.value = 0.0;
+  }
+
+  setInitialValues() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      noAppsFound = false;
+    });
+    prefs.setBool('isRecentAppInstalled', false);
+  }
+
+  Stream<int> _someData() async* {
+    yield* Stream.periodic(Duration(seconds: 2), (int a) {
+      return a++;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+
+    _controller1 = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    animation2 = Tween<double>(begin: 0.0, end: 1.0).animate(_controller1)
+      ..addListener(() {
+        print('hello');
+      });
+    setInitialValues();
     // checkInstalledApps();
     startTimer();
+    reset();
     setStateIfMounted(() {
       selectedList = selectedList;
+      _visible = true;
     });
+
     if (list == null) {
       // _incrementCounter();
     }
@@ -417,147 +505,345 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
               Expanded(
                 flex: 3,
                 child: Container(
-                    child: FutureBuilder(
-                        future: list == null
-                            ? Future.delayed(Duration(seconds: 2), () async {
-                                if (loading == false) {
-                                  return getAppsList();
-                                }
-                              })
-                            : Future.delayed(Duration(milliseconds: 400),
-                                () async {
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                var menus = prefs.getString('menus');
-                                if (loading == false) {
-                                  return await getUserInfo(menus);
-                                }
-                                // return await list;
-                              }),
-                        builder:
-                            (BuildContext context, AsyncSnapshot snapshot) {
-                          if (snapshot.data == null || loading != false) {
-                            return Center(
-                                child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: <Widget>[
-                                Image.asset(
-                                  'assets/images/dino.gif',
-                                  height: 250,
-                                  width: 250,
-                                  fit: BoxFit.contain,
-                                ),
-                                Text(
-                                  'Loading...',
-                                  style: TextStyle(color: Colors.white),
-                                )
-                              ],
-                            ));
-                          } else if (snapshot.connectionState ==
-                                  ConnectionState.done &&
-                              searchText != "" &&
-                              count == 0) {
-                            return Container(
-                                child: Padding(
-                                    padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: <Widget>[
-                                          Padding(
-                                            padding: EdgeInsets.fromLTRB(
-                                                0, 0, 0, 40),
-                                            child: Image.asset(
-                                              'assets/images/not-found.gif',
-                                              height: 100,
-                                              width: 100,
-                                              fit: BoxFit.contain,
-                                            ),
-                                          ),
-                                          TouchableOpacity(
-                                            onTap: () {
-                                              if (searchText.contains('call') ||
-                                                  searchText.contains('+91') ||
-                                                  isNumericUsingRegularExpression(
-                                                      userNameController
-                                                          .text)) {
-                                                _launchCaller(searchText);
-                                              } else {
-                                                _launchPlayStore(searchText);
-                                              }
-                                            },
-                                            child: Text(
-                                              isNumericUsingRegularExpression(
-                                                          userNameController
-                                                              .text) ||
-                                                      searchText.contains('+91')
-                                                  ? searchText.contains('call')
-                                                      ? '"$searchText" '
-                                                      : 'call "$searchText" '
-                                                  : searchText.contains(
-                                                              '.com') ||
-                                                          userNameController
-                                                              .text
-                                                              .contains('https')
-                                                      ? 'open "$searchText" in browser.'
-                                                      : 'search for "$searchText" in play store. ',
-                                              style: TextStyle(
-                                                color: Colors.blue,
-                                                fontSize: 20,
-                                                fontFamily: 'Montserrat',
-                                                decoration:
-                                                    TextDecoration.underline,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )));
-                          } else {
-                            //
-                            return ListView.builder(
-                                cacheExtent: 999,
-                                itemCount: snapshot.data.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  if (snapshot.data[index]['appName']
-                                      .toString()
-                                      .toLowerCase()
-                                      .contains(searchText.toLowerCase())) {
-                                    count = count + 1;
-                                    var icon = Uint8List.fromList(snapshot
-                                        .data[index]['icon']
-                                        .cast<int>());
-                                    return AppListGenerator(
-                                        icon: icon,
-                                        title: snapshot.data[index]['appName'],
-                                        packageName: snapshot.data[index]
-                                            ['packageName']);
-                                  } else {
-                                    var nosearchResult = true;
-                                    for (var i in snapshot.data) {
-                                      if (i['appName']
-                                          .toString()
-                                          .toLowerCase()
-                                          .contains(searchText.toLowerCase())) {
-                                        nosearchResult = false;
-                                      }
-                                    }
-                                    if (nosearchResult == true &&
-                                        searchText != "") {
-                                      count = 0;
-                                    }
+                    child: StreamBuilder(
+                        stream: getAppsList(),
+                        builder: (context, snapshot) {
+                          switch (snapshot.connectionState) {
+                            case ConnectionState.none:
+                              return Center(
+                                  child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: <Widget>[
+                                  Image.asset(
+                                    'assets/images/dino.gif',
+                                    height: 250,
+                                    width: 250,
+                                    fit: BoxFit.contain,
+                                  ),
+                                  Text(
+                                    'No Connection...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                ],
+                              ));
+                            case ConnectionState.active:
+                              return Center(
+                                  child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: <Widget>[
+                                  Image.asset(
+                                    'assets/images/dino.gif',
+                                    height: 250,
+                                    width: 250,
+                                    fit: BoxFit.contain,
+                                  ),
+                                  Text(
+                                    'Connection Active...${snapshot.data}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                ],
+                              ));
+                            case ConnectionState.waiting:
+                              return Center(
+                                  child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: <Widget>[
+                                  Image.asset(
+                                    'assets/images/dino.gif',
+                                    height: 250,
+                                    width: 250,
+                                    fit: BoxFit.contain,
+                                  ),
+                                  Text(
+                                    'Loading ...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                ],
+                              ));
 
-                                    return Container(
-                                      color: Colors.black,
-                                    );
-                                  }
-                                });
+                            case ConnectionState.done:
+                              switch (noAppsFound) {
+                                case false:
+                                  return ListView.builder(
+                                      cacheExtent: 9999,
+                                      itemCount: snapshot.data.length,
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
+                                        if (snapshot.data[index]['appName']
+                                            .toString()
+                                            .toLowerCase()
+                                            .contains(
+                                                searchText.toLowerCase())) {
+                                          count = count + 1;
+                                          var icon = Uint8List.fromList(snapshot
+                                              .data[index]['icon']
+                                              .cast<int>());
+                                          _controller1.forward();
+                                          return FadeTransition(
+                                              opacity: animation2,
+                                              child: AppListGenerator(
+                                                  icon: icon,
+                                                  title: snapshot.data[index]
+                                                      ['appName'],
+                                                  packageName:
+                                                      snapshot.data[index]
+                                                          ['packageName']));
+                                        } else {
+                                          var nosearchResult = true;
+                                          for (var i in snapshot.data) {
+                                            if (i['appName']
+                                                .toString()
+                                                .toLowerCase()
+                                                .contains(userNameController
+                                                    .text
+                                                    .toLowerCase())) {
+                                              nosearchResult = false;
+                                            }
+                                          }
+                                          if (nosearchResult == true &&
+                                              searchText != "") {
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) {
+                                              setStateIfMounted(() {
+                                                noAppsFound = true;
+                                                count = 0;
+                                              });
+                                            });
+                                          }
+
+                                          return Container(
+                                            color: Colors.black,
+                                          );
+                                        }
+                                      });
+                                case true:
+                                  return Container(
+                                      child: Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                              20, 40, 20, 0),
+                                          child: Center(
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: <Widget>[
+                                                Padding(
+                                                  padding: EdgeInsets.fromLTRB(
+                                                      0, 0, 0, 40),
+                                                  child: Image.asset(
+                                                    'assets/images/not-found.gif',
+                                                    height: 100,
+                                                    width: 100,
+                                                    fit: BoxFit.contain,
+                                                  ),
+                                                ),
+                                                TouchableOpacity(
+                                                  onTap: () {
+                                                    if (searchText
+                                                            .contains('call') ||
+                                                        searchText
+                                                            .contains('+91') ||
+                                                        isNumericUsingRegularExpression(
+                                                            userNameController
+                                                                .text)) {
+                                                      _launchCaller(searchText);
+                                                    } else {
+                                                      _launchPlayStore(
+                                                          searchText);
+                                                    }
+                                                  },
+                                                  child: Text(
+                                                    isNumericUsingRegularExpression(
+                                                                userNameController
+                                                                    .text) ||
+                                                            searchText
+                                                                .contains('+91')
+                                                        ? searchText.contains(
+                                                                'call')
+                                                            ? '"$searchText" '
+                                                            : 'call "$searchText" '
+                                                        : searchText.contains(
+                                                                    '.com') ||
+                                                                userNameController
+                                                                    .text
+                                                                    .contains(
+                                                                        'https')
+                                                            ? 'open "$searchText" in browser.'
+                                                            : 'search for "$searchText" in play store. ',
+                                                    style: TextStyle(
+                                                      color: Colors.blue,
+                                                      fontSize: 20,
+                                                      fontFamily: 'Montserrat',
+                                                      decoration: TextDecoration
+                                                          .underline,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          )));
+                              }
+                              break;
+                            default:
+                              return Center(
+                                  child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: <Widget>[
+                                  Image.asset(
+                                    'assets/images/dino.gif',
+                                    height: 250,
+                                    width: 250,
+                                    fit: BoxFit.contain,
+                                  ),
+                                  Text(
+                                    'default...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                ],
+                              ));
                           }
-                        })),
+                        })
+
+                    // child: FutureBuilder(
+                    //     future: list == null
+                    //         ? Future.delayed(Duration(seconds: 2), () async {
+                    //             if (loading == false) {
+                    //               reset();
+                    //               return getAppsList();
+                    //             }
+                    //           })
+                    //         : Future.delayed(Duration(milliseconds: 400),
+                    //             () async {
+                    //             reset();
+                    //             // _visible = true;
+                    //             final prefs =
+                    //                 await SharedPreferences.getInstance();
+                    //             var menus = prefs.getString('menus');
+                    //             if (loading == false) {
+                    //               return await getUserInfo(menus);
+                    //             }
+                    //             // _visible = false;
+                    //             // return await list;
+                    //           }),
+                    //     builder:
+                    //         (BuildContext context, AsyncSnapshot snapshot) {
+                    //       switch (snapshot.connectionState) {
+                    //         case ConnectionState.none:
+                    //           return Center(
+                    //               child: Column(
+                    //             mainAxisAlignment: MainAxisAlignment.center,
+                    //             crossAxisAlignment: CrossAxisAlignment.center,
+                    //             children: <Widget>[
+                    //               Image.asset(
+                    //                 'assets/images/dino.gif',
+                    //                 height: 250,
+                    //                 width: 250,
+                    //                 fit: BoxFit.contain,
+                    //               ),
+                    //               Text(
+                    //                 'No Connection...',
+                    //                 style: TextStyle(
+                    //                   color: Colors.white,
+                    //                 ),
+                    //               )
+                    //             ],
+                    //           ));
+                    //         case ConnectionState.active:
+                    //           return Center(
+                    //               child: Column(
+                    //             mainAxisAlignment: MainAxisAlignment.center,
+                    //             crossAxisAlignment: CrossAxisAlignment.center,
+                    //             children: <Widget>[
+                    //               Image.asset(
+                    //                 'assets/images/dino.gif',
+                    //                 height: 250,
+                    //                 width: 250,
+                    //                 fit: BoxFit.contain,
+                    //               ),
+                    //               Text(
+                    //                 'Connection Active...',
+                    //                 style: TextStyle(
+                    //                   color: Colors.white,
+                    //                 ),
+                    //               )
+                    //             ],
+                    //           ));
+                    //         case ConnectionState.waiting:
+                    //           return Center(
+                    //               child: Column(
+                    //             mainAxisAlignment: MainAxisAlignment.center,
+                    //             crossAxisAlignment: CrossAxisAlignment.center,
+                    //             children: <Widget>[
+                    //               Image.asset(
+                    //                 'assets/images/dino.gif',
+                    //                 height: 250,
+                    //                 width: 250,
+                    //                 fit: BoxFit.contain,
+                    //               ),
+                    //               Text(
+                    //                 'Connection waiting...',
+                    //                 style: TextStyle(
+                    //                   color: Colors.white,
+                    //                 ),
+                    //               )
+                    //             ],
+                    //           ));
+                    //         case ConnectionState.done:
+                    //           return Center(
+                    //               child: Column(
+                    //             mainAxisAlignment: MainAxisAlignment.center,
+                    //             crossAxisAlignment: CrossAxisAlignment.center,
+                    //             children: <Widget>[
+                    //               Image.asset(
+                    //                 'assets/images/dino.gif',
+                    //                 height: 250,
+                    //                 width: 250,
+                    //                 fit: BoxFit.contain,
+                    //               ),
+                    //               Text(
+                    //                 'Connection done...',
+                    //                 style: TextStyle(
+                    //                   color: Colors.white,
+                    //                 ),
+                    //               )
+                    //             ],
+                    //           ));
+                    //         default:
+                    //           return Center(
+                    //               child: Column(
+                    //             mainAxisAlignment: MainAxisAlignment.center,
+                    //             crossAxisAlignment: CrossAxisAlignment.center,
+                    //             children: <Widget>[
+                    //               Image.asset(
+                    //                 'assets/images/dino.gif',
+                    //                 height: 250,
+                    //                 width: 250,
+                    //                 fit: BoxFit.contain,
+                    //               ),
+                    //               Text(
+                    //                 'default...',
+                    //                 style: TextStyle(
+                    //                   color: Colors.white,
+                    //                 ),
+                    //               )
+                    //             ],
+                    //           ));
+                    //       }
+                    //     })
+                    ),
               ),
               Expanded(
                   flex: 0,
@@ -574,12 +860,15 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                   padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
                                   child: TextFormField(
                                     onChanged: (value) {
-                                      searchText = value;
-                                      Future.delayed(
-                                          Duration(milliseconds: 500), () {
-                                        setState(() {
-                                          searchText = searchText;
-                                          count = count;
+                                      // searchText = value;
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback((_) {
+                                        _debouncer.run(() {
+                                          setStateIfMounted(() {
+                                            searchText = value;
+                                            //   count = count;
+                                            noAppsFound = false;
+                                          });
                                         });
                                       });
                                     },
@@ -589,8 +878,36 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                           Icons.search,
                                           color: Colors.blueAccent,
                                         ),
-                                        suffixIcon: searchText != ""
+                                        hintText:
+                                            "Search your apps and content here",
+                                        hintStyle: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15.0),
+                                        // suffixIcon: IconButton(
+                                        //   color: Colors.red,
+                                        //   onPressed: () => {
+                                        //     SchedulerBinding.instance
+                                        //         .addPostFrameCallback((_) {
+                                        //       focus.unfocus();
+                                        //       setState(() {
+                                        //         searchText = "";
+                                        //         isListVisible = false;
+                                        //         noAppsFound = false;
+                                        //       });
+                                        //       userNameController.clear();
+                                        //       reset();
+                                        //     }),
+                                        //   },
+                                        //   // userNameController.clear()},
+                                        //   icon: Icon(
+                                        //     Icons.clear,
+                                        //     color: Colors.red,
+                                        //   ),
+                                        // )
+                                        suffixIcon: userNameController.text !=
+                                                ""
                                             ? IconButton(
+                                                color: Colors.red,
                                                 onPressed: () => {
                                                   SchedulerBinding.instance
                                                       .addPostFrameCallback(
@@ -598,8 +915,11 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                                     focus.unfocus();
                                                     setState(() {
                                                       searchText = "";
+                                                      isListVisible = false;
+                                                      noAppsFound = false;
                                                     });
                                                     userNameController.clear();
+                                                    reset();
                                                   }),
                                                 },
                                                 // userNameController.clear()},
@@ -608,12 +928,42 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                                   color: Colors.red,
                                                 ),
                                               )
-                                            : Container(),
-                                        hintText: 'Please enter a search term',
-                                        hintStyle: TextStyle(
-                                          fontSize: 15.0,
-                                          color: Colors.grey,
-                                        )),
+                                            : Text('')),
+
+                                    // InputDecoration(
+                                    //   hintText: 'Please enter a search term',
+                                    //   hintStyle: TextStyle(
+                                    //     fontSize: 15.0,
+                                    //     color: Colors.grey,
+                                    //   ),
+                                    //   prefixIcon: Icon(
+                                    //     Icons.search,
+                                    //     color: Colors.blueAccent,
+                                    //   ),
+                                    //   suffixIcon: searchText != ""
+                                    //       ? IconButton(
+                                    //           onPressed: () => {
+                                    //             SchedulerBinding.instance
+                                    //                 .addPostFrameCallback((_) {
+                                    //               focus.unfocus();
+                                    //               setState(() {
+                                    //                 searchText = "";
+                                    //                 isListVisible = false;
+                                    //                 noAppsFound = false;
+                                    //               });
+                                    //               userNameController.clear();
+                                    //               reset();
+                                    //             }),
+                                    //           },
+                                    //           // userNameController.clear()},
+                                    //           icon: Icon(
+                                    //             Icons.clear,
+                                    //             color: Colors.red,
+                                    //           ),
+                                    //         )
+                                    //       : Container(),
+                                    // ),
+
                                     controller: userNameController,
                                     keyboardType: TextInputType.emailAddress,
                                     onFieldSubmitted: (value) {
@@ -623,7 +973,64 @@ class SharedPreferencesDemoState extends State<SharedPreferencesDemo> {
                                         color: Colors.white,
                                         fontSize: 25,
                                         fontFamily: 'Montserrat'),
-                                  )),
+                                  )
+                                  // TextFormField(
+                                  //   // onChanged: (value) {
+                                  //   //   Future.delayed(Duration(milliseconds: 0),
+                                  //   //       () {
+                                  //   //     // setState(() {
+                                  //   //     searchText = value;
+                                  //   //     count = count;
+                                  //   //     noAppsFound = false;
+                                  //   //     // });
+                                  //   //     reset();
+                                  //   //   });
+                                  //   // },
+                                  //   focusNode: focus,
+                                  //   decoration: InputDecoration(
+
+                                  //     hintText: 'Please enter a search term',
+                                  //     hintStyle: TextStyle(
+                                  //       fontSize: 15.0,
+                                  //       color: Colors.grey,
+                                  //     ),
+                                  //     prefixIcon: Icon(
+                                  //       Icons.search,
+                                  //       color: Colors.blueAccent,
+                                  //     ),
+                                  //     suffixIcon: userNameController.text != ""
+                                  //         ? IconButton(
+                                  //             onPressed: () => {
+                                  //               SchedulerBinding.instance
+                                  //                   .addPostFrameCallback((_) {
+                                  //                 focus.unfocus();
+                                  //                 setState(() {
+                                  //                   searchText = "";
+                                  //                   isListVisible = false;
+                                  //                 });
+                                  //                 userNameController.clear();
+                                  //                 reset();
+                                  //               }),
+                                  //             },
+                                  //             // userNameController.clear()},
+                                  //             icon: Icon(
+                                  //               Icons.clear,
+                                  //               color: Colors.red,
+                                  //             ),
+                                  //           )
+                                  //         : Container(),
+                                  //   ),
+                                  //   controller: userNameController,
+                                  //   keyboardType: TextInputType.emailAddress,
+                                  //   onFieldSubmitted: (value) {
+                                  //     //Validator
+                                  //   },
+                                  //   style: TextStyle(
+                                  //       color: Colors.white,
+                                  //       fontSize: 25,
+                                  //       fontFamily: 'Montserrat'),
+                                  // )),
+                                  ),
                               Padding(
                                 padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
                                 child: Container(
@@ -844,5 +1251,20 @@ class RecentButtons extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class Debouncer {
+  final int milliseconds;
+  VoidCallback action;
+  Timer _timer;
+
+  Debouncer({this.milliseconds});
+
+  run(VoidCallback action) {
+    if (null != _timer) {
+      _timer.cancel();
+    }
+    _timer = Timer(Duration(milliseconds: milliseconds), action);
   }
 }

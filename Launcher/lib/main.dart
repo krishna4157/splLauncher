@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:touchable_opacity/touchable_opacity.dart';
 import 'newPage.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:focus_detector/focus_detector.dart';
 
 // import 'package:hardware_buttons/hardware_buttons.dart';
 var charging = false;
@@ -183,25 +184,12 @@ class _StartPageState extends State<StartPage>
   void initState() {
     super.initState();
     checkInstalledApps();
-
+    navigateIfCharging();
     // startTimer();
 
     // checkInstalledApps();
     setState(() {
       onChangeIcon = false;
-    });
-    _batteryStateSubscription =
-        _battery.onBatteryStateChanged.listen((BatteryState state) {
-      if (state == BatteryState.charging) {
-        setState(() {
-          charging = true;
-        });
-        navigateToCharging();
-      } else {
-        setState(() {
-          charging = false;
-        });
-      }
     });
     controller =
         AnimationController(duration: const Duration(seconds: 7), vsync: this);
@@ -216,6 +204,22 @@ class _StartPageState extends State<StartPage>
       });
     // #enddocregion addListener
     controller.forward();
+  }
+
+  navigateIfCharging() {
+    _batteryStateSubscription =
+        _battery.onBatteryStateChanged.listen((BatteryState state) {
+      if (state == BatteryState.charging) {
+        setState(() {
+          charging = true;
+        });
+        navigateToCharging();
+      } else {
+        setState(() {
+          charging = false;
+        });
+      }
+    });
   }
 
   changeMenu(event) async {
@@ -243,7 +247,7 @@ class _StartPageState extends State<StartPage>
 
   Future checkInstalledApps() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('loading', false);
+    prefs.setBool('loading', false);
     var menus = prefs.getString('menus');
     if (menus != null) {
       var v = await getUserInfo(menus);
@@ -255,27 +259,26 @@ class _StartPageState extends State<StartPage>
       var tempsAppList = v;
       // appsList.remove((k, v) => k.contains('_'));
       var count = 0;
-      for (var i in v) {
+      v.forEach((i) {
         var index = appsList.indexWhere((element) =>
             element.appName.toLowerCase().toString() ==
             i['appName'].toLowerCase().toString());
         if (index == -1) {
-          await prefs.setBool('loading', true);
-          await prefs.setBool('isRecentAppInstalled', true);
+          prefs.setBool('loading', true);
 
           var s = {
             'appName': i['appName'],
             'packageName': i['packageName'],
             'icon': i['icon']
           };
-          tempsAppList
-              .removeWhere((element) => element['appName'] == s['appName']);
-          await prefs.setString('menus', jsonEncode(tempsAppList));
+          v.removeWhere((element) => element['appName'] == s['appName']);
+          prefs.setString('menus', jsonEncode(v));
           // print(result);
 
-          await prefs.setBool('loading', false);
+          prefs.setBool('loading', false);
+          prefs.setBool('isRecentAppInstalled', true);
         }
-      }
+      });
 
       for (var i in appsList) {
         bool isSystemApp = i.apkFilePath.contains("/data/app/") ? false : true;
@@ -302,8 +305,7 @@ class _StartPageState extends State<StartPage>
 
           if (index == -1) {
             print('tusk 123');
-            await prefs.setBool('loading', true);
-            await prefs.setBool('isRecentAppInstalled', true);
+            prefs.setBool('loading', true);
 
             var s = {
               'appName': i.appName,
@@ -319,10 +321,11 @@ class _StartPageState extends State<StartPage>
                   .toLowerCase()
                   .compareTo(b['appName'].toString().toLowerCase()));
 
-              await prefs.setString('menus', jsonEncode(v));
+              prefs.setString('menus', jsonEncode(v));
               // print(result);
-              await prefs.setBool('loading', false);
+              prefs.setBool('loading', false);
             }
+            prefs.setBool('isRecentAppInstalled', true);
           }
         }
       }
@@ -455,210 +458,261 @@ class _StartPageState extends State<StartPage>
         //           ],
         //         )
         // ),
-        child: TouchableOpacity(
-            onDoubleTap: () {
-              if (charging) {
-                Navigator.push(
-                    context,
-                    PageTransition(
-                        type: PageTransitionType.fade,
-                        duration: Duration(milliseconds: 300),
-                        child: Charging()));
-              } else {
-                return false;
-              }
+        child: FocusDetector(
+            onFocusLost: () {
+              print(
+                'Focus Lost.'
+                '\nTriggered when either [onVisibilityLost] or [onForegroundLost] '
+                'is called.'
+                '\nEquivalent to onPause() on Android or viewDidDisappear() on '
+                'iOS.',
+              );
             },
-            child: Scaffold(
-                resizeToAvoidBottomInset: true,
-                backgroundColor: Colors.black,
-                body: Center(
-                  // Center is a layout widget. It takes a single child and positions it
-                  // in the middle of the parent.
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
-                    child: Column(
-                      // Column is also a layout widget. It takes a list of children and
-                      // arranges them vertically. By default, it sizes itself to fit its
-                      // children horizontally, and tries to be as tall as its parent.
-                      //
-                      // Invoke "debug painting" (press "p" in the console, choose the
-                      // "Toggle Debug Paint" action from the Flutter Inspector in Android
-                      // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-                      // to see the wireframe for each widget.
-                      //
-                      // Column has various properties to control how it sizes itself and
-                      // how it positions its children. Here we use mainAxisAlignment to
-                      // center the children vertically; the main axis here is the vertical
-                      // axis because Columns are vertical (the cross axis would be
-                      // horizontal).
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: <Widget>[
-                        // RaisedButton(
-                        //
-                        //     child: Text('s'),
-                        //     shape: RoundedRectangleBorder(
-                        //       borderRadius: new BorderRadius.circular(30.0),
-                        //     )),
-                        Padding(
-                          padding: EdgeInsets.all(5),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              ConstrainedBox(
-                                constraints: BoxConstraints.tightFor(
-                                    width: 60, height: 60),
-                                child: ElevatedButton(
-                                  child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: <Widget>[
-                                        Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: <Widget>[
-                                              Icon(
-                                                Icons.phone,
-                                                size: 25,
-                                                color: Colors.blueAccent,
-                                              ),
-                                            ]),
-                                      ]),
-                                  onPressed: () {
-                                    _launchCaller("");
-                                    //  UrlLauncher.launch("tel://<phone_number>");
-                                    // DeviceApps.openApp("com.android.incallui");
-                                  },
-                                  onLongPress: () {
-                                    _launchCaller('');
-                                  },
-                                  // DeviceApps.openApp('com.android.incallui'),
-                                  style:
-                                      // ElevatedButton.styleFrom(
-                                      //   shape: CircleBorder(),
+            onFocusGained: () {
+              print(
+                'Focus Gained.'
+                '\nTriggered when either [onVisibilityGained] or '
+                '[onForegroundGained] '
+                'is called.'
+                '\nEquivalent to onResume() on Android or viewDidAppear() on iOS.',
+              );
+            },
+            onVisibilityLost: () {
+              print(
+                'Visibility Lost.'
+                '\nIt means the widget is no longer visible within your app.',
+              );
+            },
+            onVisibilityGained: () {
+              print(
+                'Visibility Gained.'
+                '\nIt means the widget is now visible within your app.',
+              );
+              // navigateToCharging();
+            },
+            onForegroundLost: () {
+              print(
+                'Foreground Lost.'
+                '\nIt means, for example, that the user sent your app to the '
+                'background by opening another app or turned off the device\'s '
+                'screen while your widget was visible.',
+              );
+            },
+            onForegroundGained: () {
+              checkInstalledApps();
+              navigateToCharging();
+            },
+            child: TouchableOpacity(
+                onDoubleTap: () {
+                  if (charging) {
+                    Navigator.push(
+                        context,
+                        PageTransition(
+                            type: PageTransitionType.fade,
+                            duration: Duration(milliseconds: 300),
+                            child: Charging()));
+                  } else {
+                    return false;
+                  }
+                },
+                child: Scaffold(
+                    resizeToAvoidBottomInset: true,
+                    backgroundColor: Colors.black,
+                    body: Center(
+                      // Center is a layout widget. It takes a single child and positions it
+                      // in the middle of the parent.
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
+                        child: Column(
+                          // Column is also a layout widget. It takes a list of children and
+                          // arranges them vertically. By default, it sizes itself to fit its
+                          // children horizontally, and tries to be as tall as its parent.
+                          //
+                          // Invoke "debug painting" (press "p" in the console, choose the
+                          // "Toggle Debug Paint" action from the Flutter Inspector in Android
+                          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
+                          // to see the wireframe for each widget.
+                          //
+                          // Column has various properties to control how it sizes itself and
+                          // how it positions its children. Here we use mainAxisAlignment to
+                          // center the children vertically; the main axis here is the vertical
+                          // axis because Columns are vertical (the cross axis would be
+                          // horizontal).
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: <Widget>[
+                            // RaisedButton(
+                            //
+                            //     child: Text('s'),
+                            //     shape: RoundedRectangleBorder(
+                            //       borderRadius: new BorderRadius.circular(30.0),
+                            //     )),
+                            Padding(
+                              padding: EdgeInsets.all(5),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints.tightFor(
+                                        width: 60, height: 60),
+                                    child: ElevatedButton(
+                                      child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: <Widget>[
+                                            Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: <Widget>[
+                                                  Icon(
+                                                    Icons.phone,
+                                                    size: 25,
+                                                    color: Colors.blueAccent,
+                                                  ),
+                                                ]),
+                                          ]),
+                                      onPressed: () {
+                                        _launchCaller("");
+                                        //  UrlLauncher.launch("tel://<phone_number>");
+                                        // DeviceApps.openApp("com.android.incallui");
+                                      },
+                                      onLongPress: () {
+                                        _launchCaller('');
+                                      },
+                                      // DeviceApps.openApp('com.android.incallui'),
+                                      style:
+                                          // ElevatedButton.styleFrom(
+                                          //   shape: CircleBorder(),
 
-                                      // ),
-                                      ButtonStyle(
-                                    shape: MaterialStateProperty.all<
-                                            RoundedRectangleBorder>(
-                                        RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30.0),
-                                    )),
-                                    backgroundColor: MaterialStateProperty
-                                        .resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states
-                                            .contains(MaterialState.pressed))
-                                          return Colors.blueAccent;
-                                        return Colors
-                                            .black; // Use the component's default.
-                                      },
+                                          // ),
+                                          ButtonStyle(
+                                        shape: MaterialStateProperty.all<
+                                                RoundedRectangleBorder>(
+                                            RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(30.0),
+                                        )),
+                                        backgroundColor: MaterialStateProperty
+                                            .resolveWith<Color>(
+                                          (Set<MaterialState> states) {
+                                            if (states.contains(
+                                                MaterialState.pressed))
+                                              return Colors.blueAccent;
+                                            return Colors
+                                                .black; // Use the component's default.
+                                          },
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
 
-                              //menu button
-                              ConstrainedBox(
-                                constraints: BoxConstraints.tightFor(
-                                    width: onChangeIcon ? 80 : 50,
-                                    height: onChangeIcon ? 80 : 50),
-                                child: ElevatedButton(
-                                  child: onChangeIcon == true
-                                      ? Image.asset(
-                                          'assets/images/ga1.png',
-                                          height: 80,
-                                          width: 80,
-                                          fit: BoxFit.contain,
-                                        )
-                                      : AppDrawerIcon(),
-                                  onLongPress: () => {
-                                    setState(() {
-                                      onChangeIcon = true;
-                                    }),
-                                    Future.delayed(Duration(seconds: 1), () {
-                                      DeviceApps.openApp(
-                                          "com.google.android.apps.googleassistant");
-                                      setState(() {
-                                        onChangeIcon = false;
-                                      });
-                                    })
-                                  },
-                                  onPressed: () => _submit(counter: _counter),
-                                  style: ButtonStyle(
-                                    shape: MaterialStateProperty.all<
-                                            RoundedRectangleBorder>(
-                                        RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30.0),
-                                    )),
-                                    backgroundColor: MaterialStateProperty
-                                        .resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states
-                                            .contains(MaterialState.pressed))
-                                          return Colors.red;
-                                        return Colors
-                                            .black; // Use the component's default.
+                                  //menu button
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints.tightFor(
+                                        width: onChangeIcon ? 80 : 50,
+                                        height: onChangeIcon ? 80 : 50),
+                                    child: ElevatedButton(
+                                      child: onChangeIcon == true
+                                          ? Image.asset(
+                                              'assets/images/ga1.png',
+                                              height: 80,
+                                              width: 80,
+                                              fit: BoxFit.contain,
+                                            )
+                                          : AppDrawerIcon(),
+                                      onLongPress: () => {
+                                        setState(() {
+                                          onChangeIcon = true;
+                                        }),
+                                        Future.delayed(Duration(seconds: 1),
+                                            () {
+                                          DeviceApps.openApp(
+                                              "com.google.android.apps.googleassistant");
+                                          setState(() {
+                                            onChangeIcon = false;
+                                          });
+                                        })
                                       },
+                                      onPressed: () =>
+                                          _submit(counter: _counter),
+                                      style: ButtonStyle(
+                                        shape: MaterialStateProperty.all<
+                                                RoundedRectangleBorder>(
+                                            RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(30.0),
+                                        )),
+                                        backgroundColor: MaterialStateProperty
+                                            .resolveWith<Color>(
+                                          (Set<MaterialState> states) {
+                                            if (states.contains(
+                                                MaterialState.pressed))
+                                              return Colors.red;
+                                            return Colors
+                                                .black; // Use the component's default.
+                                          },
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                              //
-                              ConstrainedBox(
-                                constraints: BoxConstraints.tightFor(
-                                    width: 50, height: 50),
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    _textMe();
-                                  },
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: <Widget>[
-                                      Icon(
-                                        Icons.message,
-                                        color: Colors.orangeAccent,
-                                      )
-                                    ],
-                                  ),
-                                  style: ButtonStyle(
-                                    shape: MaterialStateProperty.all<
-                                            RoundedRectangleBorder>(
-                                        RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30.0),
-                                    )),
-                                    backgroundColor: MaterialStateProperty
-                                        .resolveWith<Color>(
-                                      (Set<MaterialState> states) {
-                                        if (states
-                                            .contains(MaterialState.pressed))
-                                          return Colors.orange;
-                                        return Colors
-                                            .black; // Use the component's default.
+                                  //
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints.tightFor(
+                                        width: 50, height: 50),
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        _textMe();
                                       },
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: <Widget>[
+                                          Icon(
+                                            Icons.message,
+                                            color: Colors.orangeAccent,
+                                          )
+                                        ],
+                                      ),
+                                      style: ButtonStyle(
+                                        shape: MaterialStateProperty.all<
+                                                RoundedRectangleBorder>(
+                                            RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(30.0),
+                                        )),
+                                        backgroundColor: MaterialStateProperty
+                                            .resolveWith<Color>(
+                                          (Set<MaterialState> states) {
+                                            if (states.contains(
+                                                MaterialState.pressed))
+                                              return Colors.orange;
+                                            return Colors
+                                                .black; // Use the component's default.
+                                          },
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                )
-                // floatingActionButton: FloatingActionButton(
-                //   onPressed: _incrementCounter,
-                //   tooltip: 'press me',
-                //   child: Icon(Icons.add),
-                // ) // This trailing comma makes auto-formatting nicer for build methods.
-                )));
+                            )
+                          ],
+                        ),
+                      ),
+                    )
+                    // floatingActionButton: FloatingActionButton(
+                    //   onPressed: _incrementCounter,
+                    //   tooltip: 'press me',
+                    //   child: Icon(Icons.add),
+                    // ) // This trailing comma makes auto-formatting nicer for build methods.
+                    ))));
   }
 }
 
