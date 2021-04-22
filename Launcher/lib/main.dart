@@ -204,10 +204,7 @@ class _StartPageState extends State<StartPage>
         });
         navigateToCharging();
       } else {
-        setState(() {
-          charging = false;
-        });
-        setPrevChargeState();
+        setToDefault();
       }
     });
     controller =
@@ -227,6 +224,14 @@ class _StartPageState extends State<StartPage>
 
   changeMenu(event) async {
     // print(event);
+  }
+
+  setToDefault() async {
+    setStateIfMounted(() {
+      charging = false;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('prevChargeState', 'disCharge');
   }
 
   Future<List> getUserInfo(menus) async {
@@ -412,7 +417,6 @@ class _StartPageState extends State<StartPage>
 
   navigateToCharging() async {
     final prefs = await SharedPreferences.getInstance();
-    var showChargeAtFirstTime = prefs.getInt('startCount');
     var isPrevCharge = prefs.getString('prevChargeState');
     if ((isPrevCharge == "disCharge" && charging == true) ||
         isPrevCharge == null) {
@@ -422,7 +426,7 @@ class _StartPageState extends State<StartPage>
               type: PageTransitionType.fade,
               duration: Duration(seconds: 2),
               child: Charging()));
-      prefs.setInt('startCount', 1);
+      // prefs.setInt('startCount', 1);
     }
   }
 

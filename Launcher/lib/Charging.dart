@@ -39,15 +39,20 @@ class MyClipPath extends AnimatedWidget {
   final Color backgroundColor = Colors.green;
   @override
   Widget build(BuildContext context) {
+    void setInitialValue() async {
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setString('prevChargeState', 'charge').then((value) =>
+          Navigator.pushReplacement(
+              context,
+              PageTransition(
+                  type: PageTransitionType.fade,
+                  duration: Duration(milliseconds: 500),
+                  child: CountingApp())));
+    }
+
     return TouchableOpacity(
       onTap: () {
         setInitialValue();
-        Navigator.pushReplacement(
-            context,
-            PageTransition(
-                type: PageTransitionType.fade,
-                duration: Duration(milliseconds: 500),
-                child: CountingApp()));
       },
       child: Stack(children: <Widget>[
         Column(
@@ -159,11 +164,6 @@ class MyClipPath extends AnimatedWidget {
   }
 }
 
-void setInitialValue() async {
-  final prefs = await SharedPreferences.getInstance();
-  prefs.setString('prevChargeState', 'charge');
-}
-
 class BottomWaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -217,6 +217,7 @@ class _MyAnimationState extends State<MyAnimation>
   @override
   void initState() {
     super.initState();
+    setupState();
     // Future.delayed(Duration(seconds: 2), () {
     //   setStateIfMounted(() {
     //     batteryPercentage = batteryPercentage;
@@ -229,19 +230,16 @@ class _MyAnimationState extends State<MyAnimation>
     _batteryStateSubscription =
         _battery.onBatteryStateChanged.listen((BatteryState state) {
       if (state == BatteryState.charging) {
-        setStateIfMounted(() {
-          batteryPercentage = batteryPercentage;
-        });
-        setupState();
-      } else {
-        resetChargeValue();
-        Navigator.pushReplacement(
-            context,
-            PageTransition(
-                type: PageTransitionType.fade,
-                duration: Duration(milliseconds: 500),
-                child: CountingApp()));
+        // setStateIfMounted(() {
+        //   batteryPercentage = batteryPercentage;
+        // });
+        setupState().then((value) => setStateIfMounted(() {
+              batteryPercentage = batteryPercentage;
+            }));
       }
+      // else {
+      //   // resetChargeValue();
+      // }
       // return state;
     });
   }
@@ -249,8 +247,20 @@ class _MyAnimationState extends State<MyAnimation>
   resetChargeValue() async {
     final prefs = await SharedPreferences.getInstance();
     // var showChargeAtFirstTime = prefs.getInt('startCount');
-    prefs.setInt('startCount', 0);
-    prefs.setString('prevChargeState', 'charge');
+    // prefs.setInt('startCount', 0);
+    prefs.setString('prevChargeState', 'charge').then((value) =>
+        Navigator.pushReplacement(
+            context,
+            PageTransition(
+                type: PageTransitionType.fade,
+                duration: Duration(milliseconds: 500),
+                child: CountingApp())));
+    // Navigator.pushReplacement(
+    //     context,
+    //     PageTransition(
+    //         type: PageTransitionType.fade,
+    //         duration: Duration(milliseconds: 500),
+    //         child: CountingApp()));
     // });
   }
 
