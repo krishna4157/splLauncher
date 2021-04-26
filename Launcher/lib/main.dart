@@ -5,7 +5,6 @@ import 'dart:ui';
 import 'package:Smart_Power_Launcher/Charging.dart';
 import 'package:battery/battery.dart';
 import 'package:device_apps/device_apps.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +12,7 @@ import 'package:touchable_opacity/touchable_opacity.dart';
 import 'newPage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:focus_detector/focus_detector.dart';
+import 'alphabetListView.dart';
 
 // import 'package:hardware_buttons/hardware_buttons.dart';
 var charging = false;
@@ -168,7 +168,7 @@ class _StartPageState extends State<StartPage>
         PageTransition(
             type: PageTransitionType.bottomToTop,
             duration: Duration(milliseconds: 300),
-            child: SecondRoute()));
+            child: MainApp()));
   }
 
   startTimer() async {
@@ -279,7 +279,8 @@ class _StartPageState extends State<StartPage>
             'packageName': i['packageName'],
             'icon': i['icon']
           };
-          v.removeWhere((element) => element['appName'] == s['appName']);
+          prefs.setString('removedAppName', i['appName']);
+          // v.removeWhere((element) => element['appName'] == s['appName']);
           prefs.setString('menus', jsonEncode(v));
           // print(result);
 
@@ -320,6 +321,7 @@ class _StartPageState extends State<StartPage>
               'packageName': i.packageName,
               'icon': i is ApplicationWithIcon ? i.icon : null
             };
+            prefs.setString('newApp', jsonEncode(s));
             futureList.add(s);
             if (futureList.length != 0) {
               v.add(futureList[0]);
@@ -329,6 +331,10 @@ class _StartPageState extends State<StartPage>
                   .toLowerCase()
                   .compareTo(b['appName'].toString().toLowerCase()));
 
+              prefs.setInt(
+                  'newAppIndex',
+                  v.indexWhere(
+                      (element) => element['appName'] == s['appName']));
               prefs.setString('menus', jsonEncode(v));
               // print(result);
               prefs.setBool('loading', false);

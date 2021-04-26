@@ -19,15 +19,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:touchable_opacity/touchable_opacity.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-var list;
+var list = [];
 var searchText = "";
 var selectedList = [];
 var loading = true;
 var userNameController = new TextEditingController();
 var count = 0;
-var _visible = true;
-var isListVisible = false;
 var noAppsFound = false;
+var milliseconds = 150;
+var tempCount = 1;
 Timer timer;
 bool isNumericUsingRegularExpression(String string) {
   final numericRegex = RegExp(r'^-?(([0-9]*)|(([0-9]*)\.([0-9]*)))$');
@@ -66,25 +66,19 @@ _launchCaller(String text) async {
 
 Future<List> getUserInfo(menus) async {
   List<dynamic> userMap;
-  final prefs = await SharedPreferences.getInstance();
-
   final String userStr = menus;
   if (userStr != null) {
     userMap = jsonDecode(userStr) as List<dynamic>;
   }
   if (userMap != null) {
     final List<dynamic> usersList = userMap;
-    // setState(() {
-    //   list = usersList;
-    // });
-    // dataStored = prefs.getString('isLoaded');
     return usersList;
   }
   return null;
 }
 
 getRandomColors() {
-  var list = [
+  var colorsList = [
     Colors.red,
     Colors.green,
     Colors.yellow,
@@ -96,12 +90,9 @@ getRandomColors() {
     Colors.deepOrangeAccent,
     Colors.lime
   ];
-// generates a new Random object
   final _random = new Random();
 
-// generate a random index based on the list length
-// and use it to retrieve the element
-  var element = list[_random.nextInt(list.length)];
+  var element = colorsList[_random.nextInt(colorsList.length)];
   return element;
 }
 
@@ -109,7 +100,7 @@ class SecondRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SPL LAuncher',
+      title: 'SPL Launcher',
       home: SharedPreferencesDemo(),
     );
   }
@@ -124,125 +115,55 @@ class SharedPreferencesDemo extends StatefulWidget {
 
 class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
     with TickerProviderStateMixin {
-  // Future<List> genCode() {
-  //   return getAppsList();
-  // }
-
+  final GlobalKey<AnimatedListState> key = new GlobalKey<AnimatedListState>();
+  List<Widget> itemData = [];
   Stream<List> getAppsList() async* {
-    final prefs = await SharedPreferences.getInstance();
-    // // dataStored = prefs.getString('isLoaded');
-    var menus = prefs.getString('menus');
+    if (userNameController.text == "") {
+      final prefs = await SharedPreferences.getInstance();
+      var menus = prefs.getString('menus');
 
-    _visible = true;
+      if (menus == null) {
+        Future<List<Application>> apps = DeviceApps.getInstalledApplications(
+            includeAppIcons: true, includeSystemApps: true);
 
-    if (list == null && menus == null) {
-      //     // await DeviceApps.getInstalledApplications();
-
-      Future<List<Application>> apps = DeviceApps.getInstalledApplications(
-          includeAppIcons: true, includeSystemApps: true);
-
-      List<AppsList> futureList = [];
-      var appsList = await apps;
-      // appsList.remove((k, v) => k.contains('_'));
-
-      for (var i in appsList) {
-        bool isSystemApp = i.apkFilePath.contains("/data/app/") ? false : true;
-        if (i.appName.toLowerCase() == 'gallery' ||
-            isSystemApp && i.appName.toLowerCase() == 'phone' ||
-            !isSystemApp) {
-          AppsList appsLists = AppsList(i.appName, i.packageName,
-              i is ApplicationWithIcon ? i.icon : null);
-          futureList.add(appsLists);
+        List<AppsList> futureList = [];
+        var appsList = await apps;
+        for (var i in appsList) {
+          bool isSystemApp =
+              i.apkFilePath.contains("/data/app/") ? false : true;
+          if (i.appName.toLowerCase() == 'gallery' ||
+              isSystemApp && i.appName.toLowerCase() == 'phone' ||
+              !isSystemApp) {
+            AppsList appsLists = AppsList(i.appName, i.packageName,
+                i is ApplicationWithIcon ? i.icon : null);
+            futureList.add(appsLists);
+          }
         }
-      }
 
-      futureList.sort((a, b) => a.appName
-          .toString()
-          .toLowerCase()
-          .compareTo(b.appName.toString().toLowerCase()));
+        futureList.sort((a, b) => a.appName
+            .toString()
+            .toLowerCase()
+            .compareTo(b.appName.toString().toLowerCase()));
 
-      // setStateIfMounted(() {
-      //   list = futureList;
-      // });
-      // print(list.length);
-      // return futureList;
+        var v;
+        await prefs.setString('menus', jsonEncode(futureList)).then((value) {
+          menus = prefs.getString('menus');
+          v = getUserInfo(menus);
+        });
 
-      /////////////////////////////////////////////////
-      // Future<List<AppInfo>> apps =
-      //     InstalledApps.getInstalledApps(false, true, "");
+        // var w = await v;
+        // v = await v;
+        // list = v;
 
-      // List<AppsList> futureList = [];
-      // var appsList = await apps;
-      // for (var i in appsList) {
-      //   bool isSystemApp = await InstalledApps.isSystemApp(i.packageName);
-
-      //   if (isSystemApp && i.appName.toLowerCase() == 'phone' || !isSystemApp) {
-      //     AppsList appsLists = AppsList(i.appName, i.packageName, i.icon);
-      //     futureList.add(appsLists);
-      //   }
-      // }
-
-      // futureList.sort((a, b) => a.appName
-      //     .toString()
-      //     .toLowerCase()
-      //     .compareTo(b.appName.toString().toLowerCase()));
-
-      // setStateIfMounted(() {
-      //   list = futureList;
-      //   loading = false;
-      // });
-
-      bool result = await prefs.setString('menus', jsonEncode(futureList));
-      // prefs.setString('isLoaded', 'true');
-      // print(result);
-
-      // setStateIfMounted(() {
-      //   list = futureList;
-      //   loading = false;
-      // });
-      // dataStored = prefs.getString('isLoaded');
-      // prefs.setString('isLoaded', 'true');
-      var v = getUserInfo(menus);
-      setStateIfMounted(() {
-        list = v;
-        _visible = false;
-      });
-      // Future.delayed(Duration(seconds: 1), () {
-      //   _visible = false;
-      // });
-      // return list;
-      // print(list.length);
-      _visible = false;
-      _controller.forward();
-      yield* Stream.fromFuture(v);
-    } else {
-      if (list != null) {
-        // return list;
-        var v = getUserInfo(menus);
-        // setStateIfMounted(() {
-        //   list = v;
-        //   loading = false;
-        // });
-        // Future.delayed(Duration(seconds: 1), () {
-        //   _visible = false;
-        // });
-        _controller.forward();
-        _visible = false;
         yield* Stream.fromFuture(v);
       } else {
+        // if (list != null) {
+        //   var v = getUserInfo(menus);
+        //   yield* Stream.fromFuture(v);
+        // } else {
         var menus = prefs.getString('menus');
         var v = getUserInfo(menus);
-        // setStateIfMounted(() {
-        //   list = v;
-        //   loading = false;
-        // });
-        // Future.delayed(Duration(seconds: 1), () {
-        //   _visible = false;
-        // });
-        //
-        _controller.forward();
-        _visible = false;
-
+        list = await v;
         yield* Stream.fromFuture(v);
       }
     }
@@ -252,161 +173,55 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
     if (mounted) setState(f);
   }
 
-  // Future checkInstalledApps() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   var menus = prefs.getString('menus');
-  //   if (menus != null) {
-  //     var v = await getUserInfo(menus);
-  //     Future<List<Application>> apps = DeviceApps.getInstalledApplications(
-  //         includeAppIcons: true, includeSystemApps: true);
-
-  //     List futureList = [];
-  //     var appsList = await apps;
-  //     // appsList.remove((k, v) => k.contains('_'));
-  //     var count = 0;
-  //     for (var i in appsList) {
-  //       bool isSystemApp = i.apkFilePath.contains("/data/app/") ? false : true;
-  //       if (i.appName.toLowerCase() == 'gallery' ||
-  //           isSystemApp && i.appName.toLowerCase() == 'phone' ||
-  //           !isSystemApp) {
-  //         var index =
-  //             v.indexWhere((element) => element['appName'] == i.appName);
-
-  //         if (index == -1) {
-  //           var s = {
-  //             'appName': i.appName,
-  //             'packageName': i.packageName,
-  //             'icon': i is ApplicationWithIcon ? i.icon : null
-  //           };
-  //           futureList.add(s);
-  //           if (futureList.length != 0) {
-  //             v.add(futureList[0]);
-
-  //             v.sort((a, b) => a['appName']
-  //                 .toString()
-  //                 .toLowerCase()
-  //                 .compareTo(b['appName'].toString().toLowerCase()));
-
-  //             bool result = await prefs.setString('menus', jsonEncode(v));
-  //             print(result);
-  //           }
-  //         }
-  //       }
-  //     }
-  //     // prefs.setString('isLoaded', 'true');
-
-  //     //
-
-  //     // futureList.sort((a, b) => a.appName
-  //     //     .toString()
-  //     //     .toLowerCase()
-  //     //     .compareTo(b.appName.toString().toLowerCase()));
-
-  //     // setStateIfMounted(() {
-  //     //   list = futureList;
-  //     //   loading = false;
-  //     // });
-  //     // print(list.length);
-  //     // return futureList;
-
-  //     /////////////////////////////////////////////////
-  //     // Future<List<AppInfo>> apps =
-  //     //     InstalledApps.getInstalledApps(false, true, "");
-
-  //     // List<AppsList> futureList = [];
-  //     // var appsList = await apps;
-  //     // for (var i in appsList) {
-  //     //   bool isSystemApp = await InstalledApps.isSystemApp(i.packageName);
-
-  //     //   if (isSystemApp && i.appName.toLowerCase() == 'phone' || !isSystemApp) {
-  //     //     AppsList appsLists = AppsList(i.appName, i.packageName, i.icon);
-  //     //     futureList.add(appsLists);
-  //     //   }
-  //     // }
-
-  //     // futureList.sort((a, b) => a.appName
-  //     //     .toString()
-  //     //     .toLowerCase()
-  //     //     .compareTo(b.appName.toString().toLowerCase()));
-
-  //     // setStateIfMounted(() {
-  //     //   list = futureList;
-  //     //   loading = false;
-  //     // });
-
-  //     // bool result = await prefs.setString('menus', jsonEncode(futureList));
-  //     // prefs.setString('isLoaded', 'true');
-  //     // print(result);
-
-  //     // setStateIfMounted(() {
-  //     //   list = futureList;
-  //     //   loading = false;
-  //     // });
-  //     // dataStored = prefs.getString('isLoaded');
-  //     // prefs.setString('isLoaded', 'true');
-  //     // setStateIfMounted(() {
-  //     //   list = v;
-  //     //   loading = false;
-  //     // });
-  //     // return list;
-  //     // print(list.length);
-  //     // return v;
-  //   }
-  // }
-  //
   startTimer() async {
     timer = Timer.periodic(Duration(seconds: 1), (Timer t) => updateLoading());
   }
 
   updateLoading() async {
     final prefs = await SharedPreferences.getInstance();
-    var prevLoading = prefs.getBool('loading');
-    var menus = prefs.getString('menus');
-    Future.delayed(Duration(seconds: 5), () {
-      if (userNameController.text != searchText) {
-        // setStateIfMounted(() {
-        // searchText = userNameController.text;
-        // count = count;
-        // noAppsFound = false;
-        // });
-        reset();
-      }
-    });
+    count = 0;
+    if (userNameController.text.toString().isEmpty) {
+    } else {
+      list.forEach((e) {
+        if (e['appName']
+            .toString()
+            .toLowerCase()
+            .contains(userNameController.text.toLowerCase())) {
+          count = count + 1;
+        }
+      });
+    }
 
     var isRecentAppInstalled = prefs.getBool('isRecentAppInstalled');
 
-    if (isRecentAppInstalled) {
-      await prefs.setBool('isRecentAppInstalled', false);
-      setStateIfMounted(() {});
-    }
+    if (isRecentAppInstalled != null && isRecentAppInstalled) {
+      var removedApp = prefs.getString('removedAppName');
+      if (removedApp != null && removedApp != "") {
+        // var s = prefs.getString('menus');
 
-    if (prevLoading != loading || loading == true) {
-      var v = await getUserInfo(menus);
-      setStateIfMounted(() {
-        loading = prevLoading;
-      });
-      if (isRecentAppInstalled == true) {
-        setStateIfMounted(() {
-          list = v;
-        });
-        await prefs.setBool('isRecentAppInstalled', false);
+        list.removeWhere((element) => element['appName'] == removedApp);
+        prefs.setString('menus', jsonEncode(list));
+        prefs.setString('removedAppName', "");
       }
+
+      Future.delayed(Duration(milliseconds: 150), () {
+        setStateIfMounted(() {
+          // list = v;
+        });
+      });
+
+      await prefs.setBool('isRecentAppInstalled', false);
     }
   }
 
-  // onChangeVisibility() {
-  //   isListVisible = true;
-  // }
-
-  AnimationController _controller;
   AnimationController _controller1;
   Animation<double> animation2;
   Animation<double> animation;
   final _debouncer = new Debouncer(milliseconds: 500);
+  var nosearchResult = true;
   @override
   void dispose() {
     super.dispose();
-    _controller.dispose();
     reset();
   }
 
@@ -414,72 +229,59 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
     _controller1.value = 0.0;
   }
 
-  setInitialValues() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      noAppsFound = false;
-    });
-    prefs.setBool('isRecentAppInstalled', false);
+  void resetCount() {
+    _controller1.value = 0.0;
+    count = 0;
+    tempCount = 1;
   }
 
-  Stream<int> _someData() async* {
-    yield* Stream.periodic(Duration(seconds: 2), (int a) {
-      return a++;
+  setInitialValues() async {
+    setStateIfMounted(() {
+      noAppsFound = false;
     });
   }
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 1),
+
+    _controller1 = AnimationController(
+      duration: Duration(milliseconds: milliseconds),
       vsync: this,
     );
 
-    _controller1 = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
     animation2 = Tween<double>(begin: 0.0, end: 1.0).animate(_controller1)
       ..addListener(() {
-        print('hello');
+        // print('hello');
       });
     setInitialValues();
-    // checkInstalledApps();
     startTimer();
     reset();
     setStateIfMounted(() {
       selectedList = selectedList;
-      _visible = true;
     });
-
-    if (list == null) {
-      // _incrementCounter();
-    }
     userNameController.clear();
-    setStateIfMounted(() {
-      searchText = "";
-    });
-    // userNameController.addListener(() {
-    // setStateIfMounted(() {
-    // searchText = userNameController.text.toString();
-    // count = count;
-    // });
-    // var c = 0;
-    // for (int i = 0; i < list.length; i++) {
-    //   if (list[i]
-    //       .appName
-    //       .toLowerCase()
-    //       .contains(searchText.toString().toLowerCase())) {
-    //     // c = c + 1;
-    //   }
-    // }
+    noAppsFound = false;
+    userNameController.addListener(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _debouncer.run(() {
+          print('tempCount : $tempCount');
+          print('Count : $count');
+          if (tempCount != count || tempCount == 0) {
+            Future.delayed(Duration(milliseconds: 100), () {
+              setStateIfMounted(() {
+                // searchText = value;
+                noAppsFound = noAppsFound;
+                tempCount = count;
+              });
+              reset();
+            });
+          }
 
-    // setStateIfMounted(() {
-    //   count = count;
-    //   selectedList = selectedList;
-    // });
-    // });
+          // _controller1.forward();
+        });
+      });
+    });
   }
 
   @override
@@ -496,7 +298,7 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
               context,
               PageTransition(
                   type: PageTransitionType.fade,
-                  duration: Duration(milliseconds: 500),
+                  duration: Duration(milliseconds: 200),
                   child: CountingApp()));
         },
         child: Scaffold(
@@ -508,97 +310,52 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
                     child: StreamBuilder(
                         stream: getAppsList(),
                         builder: (context, snapshot) {
-                          switch (snapshot.connectionState) {
-                            case ConnectionState.none:
-                              return Center(
-                                  child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: <Widget>[
-                                  Image.asset(
-                                    'assets/images/dino.gif',
-                                    height: 250,
-                                    width: 250,
-                                    fit: BoxFit.contain,
-                                  ),
-                                  Text(
-                                    'No Connection...',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                ],
-                              ));
-                            case ConnectionState.active:
-                              return Center(
-                                  child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: <Widget>[
-                                  Image.asset(
-                                    'assets/images/dino.gif',
-                                    height: 250,
-                                    width: 250,
-                                    fit: BoxFit.contain,
-                                  ),
-                                  Text(
-                                    'Connection Active...${snapshot.data}',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                ],
-                              ));
-                            case ConnectionState.waiting:
-                              return Center(
-                                  child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: <Widget>[
-                                  Image.asset(
-                                    'assets/images/dino.gif',
-                                    height: 250,
-                                    width: 250,
-                                    fit: BoxFit.contain,
-                                  ),
-                                  Text(
-                                    'Loading ...',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                ],
-                              ));
+                          if (snapshot.hasData) {
+                            if (!noAppsFound) {
+                              // count = 0;
 
-                            case ConnectionState.done:
-                              switch (noAppsFound) {
-                                case false:
-                                  return ListView.builder(
+                              return ShaderMask(
+                                  shaderCallback: (Rect bounds) {
+                                    return LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: <Color>[
+                                        Colors.white,
+                                        Colors.white,
+                                        Colors.white,
+                                        Colors.white,
+                                        Colors.black
+                                      ],
+                                    ).createShader(bounds);
+                                  },
+                                  child: ListView.builder(
+                                      key: key,
                                       cacheExtent: 9999,
+                                      physics: BouncingScrollPhysics(),
                                       itemCount: snapshot.data.length,
                                       itemBuilder:
                                           (BuildContext context, int index) {
+                                        // reset();
+                                        // if (userNameController.text == "") {
+                                        Future.delayed(
+                                            Duration(milliseconds: 250), () {
+                                          // reset();
+                                          _controller1.forward();
+                                        });
+                                        // }
                                         if (snapshot.data[index]['appName']
                                             .toString()
                                             .toLowerCase()
-                                            .contains(
-                                                searchText.toLowerCase())) {
-                                          count = count + 1;
-                                          var icon = Uint8List.fromList(snapshot
-                                              .data[index]['icon']
-                                              .cast<int>());
-                                          _controller1.forward();
+                                            .contains(userNameController.text
+                                                .toString()
+                                                .toLowerCase())) {
+                                          // return itemData[index];
                                           return FadeTransition(
                                               opacity: animation2,
-                                              child: AppListGenerator(
-                                                  icon: icon,
-                                                  title: snapshot.data[index]
-                                                      ['appName'],
-                                                  packageName:
-                                                      snapshot.data[index]
-                                                          ['packageName']));
+                                              child: buildItem(
+                                                  snapshot.data[index], index));
                                         } else {
-                                          var nosearchResult = true;
+                                          nosearchResult = true;
                                           for (var i in snapshot.data) {
                                             if (i['appName']
                                                 .toString()
@@ -609,241 +366,120 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
                                               nosearchResult = false;
                                             }
                                           }
-                                          if (nosearchResult == true &&
-                                              searchText != "") {
-                                            WidgetsBinding.instance
-                                                .addPostFrameCallback((_) {
-                                              setStateIfMounted(() {
-                                                noAppsFound = true;
-                                                count = 0;
-                                              });
-                                            });
+
+                                          while (nosearchResult == true &&
+                                              userNameController.text != "") {
+                                            noAppsFound = true;
+                                            break;
                                           }
 
                                           return Container(
-                                            color: Colors.black,
+                                            color: Colors.red,
                                           );
                                         }
-                                      });
-                                case true:
-                                  return Container(
-                                      child: Padding(
-                                          padding: EdgeInsets.fromLTRB(
-                                              20, 40, 20, 0),
-                                          child: Center(
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: <Widget>[
-                                                Padding(
-                                                  padding: EdgeInsets.fromLTRB(
-                                                      0, 0, 0, 40),
-                                                  child: Image.asset(
-                                                    'assets/images/not-found.gif',
-                                                    height: 100,
-                                                    width: 100,
-                                                    fit: BoxFit.contain,
-                                                  ),
-                                                ),
-                                                TouchableOpacity(
-                                                  onTap: () {
-                                                    if (searchText
-                                                            .contains('call') ||
-                                                        searchText
-                                                            .contains('+91') ||
-                                                        isNumericUsingRegularExpression(
-                                                            userNameController
-                                                                .text)) {
-                                                      _launchCaller(searchText);
-                                                    } else {
-                                                      _launchPlayStore(
-                                                          searchText);
-                                                    }
-                                                  },
-                                                  child: Text(
-                                                    isNumericUsingRegularExpression(
-                                                                userNameController
-                                                                    .text) ||
-                                                            searchText
-                                                                .contains('+91')
-                                                        ? searchText.contains(
-                                                                'call')
-                                                            ? '"$searchText" '
-                                                            : 'call "$searchText" '
-                                                        : searchText.contains(
-                                                                    '.com') ||
-                                                                userNameController
-                                                                    .text
-                                                                    .contains(
-                                                                        'https')
-                                                            ? 'open "$searchText" in browser.'
-                                                            : 'search for "$searchText" in play store. ',
-                                                    style: TextStyle(
-                                                      color: Colors.blue,
-                                                      fontSize: 20,
-                                                      fontFamily: 'Montserrat',
-                                                      decoration: TextDecoration
-                                                          .underline,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          )));
+                                      }));
+                            } else {
+                              var index = snapshot.data.indexWhere((ele) =>
+                                  ele["appName"]
+                                      .toString()
+                                      .toLowerCase()
+                                      .contains(userNameController.text));
+                              if (index == -1) {
+                                noAppsFound = true;
+                              } else {
+                                noAppsFound = false;
                               }
-                              break;
-                            default:
-                              return Center(
-                                  child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: <Widget>[
-                                  Image.asset(
-                                    'assets/images/dino.gif',
-                                    height: 250,
-                                    width: 250,
-                                    fit: BoxFit.contain,
+                              return Container(
+                                  child: Padding(
+                                      padding:
+                                          EdgeInsets.fromLTRB(20, 40, 20, 0),
+                                      child: Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: <Widget>[
+                                            Padding(
+                                              padding: EdgeInsets.fromLTRB(
+                                                  0, 0, 0, 40),
+                                              child: Image.asset(
+                                                'assets/images/not-found.gif',
+                                                height: 100,
+                                                width: 100,
+                                                fit: BoxFit.contain,
+                                              ),
+                                            ),
+                                            TouchableOpacity(
+                                              onTap: () {
+                                                if (userNameController.text
+                                                        .contains('call') ||
+                                                    userNameController.text
+                                                        .contains('+91') ||
+                                                    isNumericUsingRegularExpression(
+                                                        userNameController
+                                                            .text)) {
+                                                  _launchCaller(
+                                                      userNameController.text);
+                                                } else {
+                                                  _launchPlayStore(
+                                                      userNameController.text);
+                                                }
+                                              },
+                                              child: Text(
+                                                isNumericUsingRegularExpression(
+                                                            userNameController
+                                                                .text) ||
+                                                        userNameController.text
+                                                            .contains('+91')
+                                                    ? userNameController.text
+                                                            .contains('call')
+                                                        ? '"${userNameController.text}" '
+                                                        : 'call "${userNameController.text}" '
+                                                    : userNameController.text
+                                                                .contains(
+                                                                    '.com') ||
+                                                            userNameController
+                                                                .text
+                                                                .contains(
+                                                                    'https')
+                                                        ? 'open "${userNameController.text}" in browser.'
+                                                        : 'search for "${userNameController.text}" in play store. ',
+                                                style: TextStyle(
+                                                  color: Colors.blue,
+                                                  fontSize: 20,
+                                                  fontFamily: 'Montserrat',
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      )));
+                            }
+                          } else {
+                            return Center(
+                                child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: <Widget>[
+                                Image.asset(
+                                  'assets/images/dino.gif',
+                                  height: 250,
+                                  width: 250,
+                                  fit: BoxFit.contain,
+                                ),
+                                Text(
+                                  'Loading ...',
+                                  style: TextStyle(
+                                    color: Colors.white,
                                   ),
-                                  Text(
-                                    'default...',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                ],
-                              ));
+                                )
+                              ],
+                            ));
                           }
-                        })
-
-                    // child: FutureBuilder(
-                    //     future: list == null
-                    //         ? Future.delayed(Duration(seconds: 2), () async {
-                    //             if (loading == false) {
-                    //               reset();
-                    //               return getAppsList();
-                    //             }
-                    //           })
-                    //         : Future.delayed(Duration(milliseconds: 400),
-                    //             () async {
-                    //             reset();
-                    //             // _visible = true;
-                    //             final prefs =
-                    //                 await SharedPreferences.getInstance();
-                    //             var menus = prefs.getString('menus');
-                    //             if (loading == false) {
-                    //               return await getUserInfo(menus);
-                    //             }
-                    //             // _visible = false;
-                    //             // return await list;
-                    //           }),
-                    //     builder:
-                    //         (BuildContext context, AsyncSnapshot snapshot) {
-                    //       switch (snapshot.connectionState) {
-                    //         case ConnectionState.none:
-                    //           return Center(
-                    //               child: Column(
-                    //             mainAxisAlignment: MainAxisAlignment.center,
-                    //             crossAxisAlignment: CrossAxisAlignment.center,
-                    //             children: <Widget>[
-                    //               Image.asset(
-                    //                 'assets/images/dino.gif',
-                    //                 height: 250,
-                    //                 width: 250,
-                    //                 fit: BoxFit.contain,
-                    //               ),
-                    //               Text(
-                    //                 'No Connection...',
-                    //                 style: TextStyle(
-                    //                   color: Colors.white,
-                    //                 ),
-                    //               )
-                    //             ],
-                    //           ));
-                    //         case ConnectionState.active:
-                    //           return Center(
-                    //               child: Column(
-                    //             mainAxisAlignment: MainAxisAlignment.center,
-                    //             crossAxisAlignment: CrossAxisAlignment.center,
-                    //             children: <Widget>[
-                    //               Image.asset(
-                    //                 'assets/images/dino.gif',
-                    //                 height: 250,
-                    //                 width: 250,
-                    //                 fit: BoxFit.contain,
-                    //               ),
-                    //               Text(
-                    //                 'Connection Active...',
-                    //                 style: TextStyle(
-                    //                   color: Colors.white,
-                    //                 ),
-                    //               )
-                    //             ],
-                    //           ));
-                    //         case ConnectionState.waiting:
-                    //           return Center(
-                    //               child: Column(
-                    //             mainAxisAlignment: MainAxisAlignment.center,
-                    //             crossAxisAlignment: CrossAxisAlignment.center,
-                    //             children: <Widget>[
-                    //               Image.asset(
-                    //                 'assets/images/dino.gif',
-                    //                 height: 250,
-                    //                 width: 250,
-                    //                 fit: BoxFit.contain,
-                    //               ),
-                    //               Text(
-                    //                 'Connection waiting...',
-                    //                 style: TextStyle(
-                    //                   color: Colors.white,
-                    //                 ),
-                    //               )
-                    //             ],
-                    //           ));
-                    //         case ConnectionState.done:
-                    //           return Center(
-                    //               child: Column(
-                    //             mainAxisAlignment: MainAxisAlignment.center,
-                    //             crossAxisAlignment: CrossAxisAlignment.center,
-                    //             children: <Widget>[
-                    //               Image.asset(
-                    //                 'assets/images/dino.gif',
-                    //                 height: 250,
-                    //                 width: 250,
-                    //                 fit: BoxFit.contain,
-                    //               ),
-                    //               Text(
-                    //                 'Connection done...',
-                    //                 style: TextStyle(
-                    //                   color: Colors.white,
-                    //                 ),
-                    //               )
-                    //             ],
-                    //           ));
-                    //         default:
-                    //           return Center(
-                    //               child: Column(
-                    //             mainAxisAlignment: MainAxisAlignment.center,
-                    //             crossAxisAlignment: CrossAxisAlignment.center,
-                    //             children: <Widget>[
-                    //               Image.asset(
-                    //                 'assets/images/dino.gif',
-                    //                 height: 250,
-                    //                 width: 250,
-                    //                 fit: BoxFit.contain,
-                    //               ),
-                    //               Text(
-                    //                 'default...',
-                    //                 style: TextStyle(
-                    //                   color: Colors.white,
-                    //                 ),
-                    //               )
-                    //             ],
-                    //           ));
-                    //       }
-                    //     })
-                    ),
+                        })),
               ),
               Expanded(
                   flex: 0,
@@ -859,19 +495,6 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
                               Padding(
                                   padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
                                   child: TextFormField(
-                                    onChanged: (value) {
-                                      // searchText = value;
-                                      WidgetsBinding.instance
-                                          .addPostFrameCallback((_) {
-                                        _debouncer.run(() {
-                                          setStateIfMounted(() {
-                                            searchText = value;
-                                            //   count = count;
-                                            noAppsFound = false;
-                                          });
-                                        });
-                                      });
-                                    },
                                     focusNode: focus,
                                     decoration: InputDecoration(
                                         prefixIcon: Icon(
@@ -883,27 +506,6 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
                                         hintStyle: TextStyle(
                                             color: Colors.white,
                                             fontSize: 15.0),
-                                        // suffixIcon: IconButton(
-                                        //   color: Colors.red,
-                                        //   onPressed: () => {
-                                        //     SchedulerBinding.instance
-                                        //         .addPostFrameCallback((_) {
-                                        //       focus.unfocus();
-                                        //       setState(() {
-                                        //         searchText = "";
-                                        //         isListVisible = false;
-                                        //         noAppsFound = false;
-                                        //       });
-                                        //       userNameController.clear();
-                                        //       reset();
-                                        //     }),
-                                        //   },
-                                        //   // userNameController.clear()},
-                                        //   icon: Icon(
-                                        //     Icons.clear,
-                                        //     color: Colors.red,
-                                        //   ),
-                                        // )
                                         suffixIcon: userNameController.text !=
                                                 ""
                                             ? IconButton(
@@ -913,9 +515,8 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
                                                       .addPostFrameCallback(
                                                           (_) {
                                                     focus.unfocus();
-                                                    setState(() {
-                                                      searchText = "";
-                                                      isListVisible = false;
+                                                    count = 0;
+                                                    setStateIfMounted(() {
                                                       noAppsFound = false;
                                                     });
                                                     userNameController.clear();
@@ -929,41 +530,6 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
                                                 ),
                                               )
                                             : Text('')),
-
-                                    // InputDecoration(
-                                    //   hintText: 'Please enter a search term',
-                                    //   hintStyle: TextStyle(
-                                    //     fontSize: 15.0,
-                                    //     color: Colors.grey,
-                                    //   ),
-                                    //   prefixIcon: Icon(
-                                    //     Icons.search,
-                                    //     color: Colors.blueAccent,
-                                    //   ),
-                                    //   suffixIcon: searchText != ""
-                                    //       ? IconButton(
-                                    //           onPressed: () => {
-                                    //             SchedulerBinding.instance
-                                    //                 .addPostFrameCallback((_) {
-                                    //               focus.unfocus();
-                                    //               setState(() {
-                                    //                 searchText = "";
-                                    //                 isListVisible = false;
-                                    //                 noAppsFound = false;
-                                    //               });
-                                    //               userNameController.clear();
-                                    //               reset();
-                                    //             }),
-                                    //           },
-                                    //           // userNameController.clear()},
-                                    //           icon: Icon(
-                                    //             Icons.clear,
-                                    //             color: Colors.red,
-                                    //           ),
-                                    //         )
-                                    //       : Container(),
-                                    // ),
-
                                     controller: userNameController,
                                     keyboardType: TextInputType.emailAddress,
                                     onFieldSubmitted: (value) {
@@ -973,64 +539,7 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
                                         color: Colors.white,
                                         fontSize: 25,
                                         fontFamily: 'Montserrat'),
-                                  )
-                                  // TextFormField(
-                                  //   // onChanged: (value) {
-                                  //   //   Future.delayed(Duration(milliseconds: 0),
-                                  //   //       () {
-                                  //   //     // setState(() {
-                                  //   //     searchText = value;
-                                  //   //     count = count;
-                                  //   //     noAppsFound = false;
-                                  //   //     // });
-                                  //   //     reset();
-                                  //   //   });
-                                  //   // },
-                                  //   focusNode: focus,
-                                  //   decoration: InputDecoration(
-
-                                  //     hintText: 'Please enter a search term',
-                                  //     hintStyle: TextStyle(
-                                  //       fontSize: 15.0,
-                                  //       color: Colors.grey,
-                                  //     ),
-                                  //     prefixIcon: Icon(
-                                  //       Icons.search,
-                                  //       color: Colors.blueAccent,
-                                  //     ),
-                                  //     suffixIcon: userNameController.text != ""
-                                  //         ? IconButton(
-                                  //             onPressed: () => {
-                                  //               SchedulerBinding.instance
-                                  //                   .addPostFrameCallback((_) {
-                                  //                 focus.unfocus();
-                                  //                 setState(() {
-                                  //                   searchText = "";
-                                  //                   isListVisible = false;
-                                  //                 });
-                                  //                 userNameController.clear();
-                                  //                 reset();
-                                  //               }),
-                                  //             },
-                                  //             // userNameController.clear()},
-                                  //             icon: Icon(
-                                  //               Icons.clear,
-                                  //               color: Colors.red,
-                                  //             ),
-                                  //           )
-                                  //         : Container(),
-                                  //   ),
-                                  //   controller: userNameController,
-                                  //   keyboardType: TextInputType.emailAddress,
-                                  //   onFieldSubmitted: (value) {
-                                  //     //Validator
-                                  //   },
-                                  //   style: TextStyle(
-                                  //       color: Colors.white,
-                                  //       fontSize: 25,
-                                  //       fontFamily: 'Montserrat'),
-                                  // )),
-                                  ),
+                                  )),
                               Padding(
                                 padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
                                 child: Container(
@@ -1051,15 +560,55 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
                       ]))
             ])));
   }
+
+  Widget buildItem(item, int index) {
+    Animation itemAnim =
+        Tween<double>(begin: 0.0, end: 1.0).animate(_controller1);
+
+    void resetAnimation() {
+      // reset();
+      // _controller1.forward();
+    }
+
+    return AppListGenerator(
+        title: item['appName'],
+        icon: Uint8List.fromList(item['icon'].cast<int>()),
+        packageName: item['packageName'],
+        itemAnimation: itemAnim,
+        resetAnimation: () => resetAnimation(),
+        onClicked: () => {});
+  }
+
+  void removeItem(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    final menus = prefs.getString('menus');
+    final removedAppName = prefs.getString('removedAppName');
+
+    var removeApp = '1Intro';
+    var item = await getUserInfo(menus);
+    final removedItem =
+        item.where((element) => element['appName'] == removedAppName).single;
+    final removedIndex =
+        item.indexWhere((element) => element['appName'] == removedAppName);
+    item.removeWhere((element) => element['appName'] == removedAppName);
+
+    if (key.currentState != null)
+      key.currentState.removeItem(removedIndex,
+          (context, animation) => buildItem(removedItem, removedIndex));
+  }
+
+  void insertItem(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    final menus = prefs.getString('menus');
+    var removeApp = '1Intro';
+    final item = await getUserInfo(menus);
+    final removedItem =
+        item.where((element) => element['appName'] == removeApp).single;
+    final removedIndex =
+        item.indexWhere((element) => element['appName'] == removeApp);
+    key.currentState.insertItem(index);
+  }
 }
-
-// class AppsList {
-//   final String appName;
-//   final String packageName;
-//   final Uint8List icon;
-
-//   AppsList(this.appName, this.packageName, this.icon);
-// }
 
 class AppsList {
   String appName;
@@ -1092,9 +641,19 @@ class AppListGenerator extends StatelessWidget {
   final String title;
   final Uint8List icon;
   final String packageName;
+  final Animation itemAnimation;
+  final VoidCallback onClicked;
+  final VoidCallback resetAnimation;
 
-  const AppListGenerator({Key key, this.title, this.icon, this.packageName})
-      : super(key: key);
+  const AppListGenerator({
+    Key key,
+    this.title,
+    this.icon,
+    this.packageName,
+    this.itemAnimation,
+    this.onClicked,
+    this.resetAnimation,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1103,36 +662,13 @@ class AppListGenerator extends StatelessWidget {
       height: 50,
       width: 50,
     );
-    //  FadeInImage(
-    //   placeholder: MemoryImage(icon),
-    //   image: MemoryImage(icon),
-    //   height: 50,
-    //   width: 50,
-    // );
-    // FadeInImage(
-    //   placeholder:
-    // MemoryImage(icon),
-    // image: MemoryImage(icon),
-    // fadeInDuration: Duration(milliseconds: 50),
-    // // fadeOutDuration: Duration(milliseconds: 50),
-    // height: 50,
-    // width: 50,
-    // );
 
-    // FadeInImage(
-    //   placeholder: MemoryImage(icon),
-    //   image: MemoryImage(icon),
-    //   fadeInDuration: Duration(milliseconds: 50),
-    //   // fadeOutDuration: Duration(milliseconds: 50),
-    //   height: 50,
-    //   width: 50,
-    // );
-
-    // Widget t = Image.memory(icon);
+    resetAnimation();
 
     return Column(children: [
       TouchableOpacity(
           onTap: () {
+            onClicked();
             var s = {'packageName': packageName, 'title': title};
             if (selectedList.length > 5) {
               selectedList.removeLast();
@@ -1159,7 +695,7 @@ class AppListGenerator extends StatelessWidget {
             }
           },
           child: AnimatedContainer(
-              duration: Duration(seconds: 5),
+              duration: Duration(seconds: 1),
               color: Colors.black,
               width: MediaQuery.of(context).size.width,
               child: Padding(
@@ -1241,7 +777,6 @@ class RecentButtons extends StatelessWidget {
                             side: BorderSide(color: color)))),
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
-                  // activeOpacity: 0.4,
                   child: Text(
                     title,
                     style: TextStyle(color: color),
