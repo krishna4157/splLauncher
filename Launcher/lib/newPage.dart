@@ -18,6 +18,7 @@ import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:touchable_opacity/touchable_opacity.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:alphabet_list_scroll_view/alphabet_list_scroll_view.dart';
 
 var list = [];
 var searchText = "";
@@ -28,6 +29,7 @@ var count = 0;
 var noAppsFound = false;
 var milliseconds = 150;
 var tempCount = 1;
+List<String> strList = [];
 Timer timer;
 bool isNumericUsingRegularExpression(String string) {
   final numericRegex = RegExp(r'^-?(([0-9]*)|(([0-9]*)\.([0-9]*)))$');
@@ -136,6 +138,7 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
               !isSystemApp) {
             AppsList appsLists = AppsList(i.appName, i.packageName,
                 i is ApplicationWithIcon ? i.icon : null);
+            strList.add(i.appName);
             futureList.add(appsLists);
           }
         }
@@ -146,6 +149,7 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
             .compareTo(b.appName.toString().toLowerCase()));
 
         var v;
+        await prefs.setString('searchText', jsonEncode(strList));
         await prefs.setString('menus', jsonEncode(futureList)).then((value) {
           menus = prefs.getString('menus');
           v = getUserInfo(menus);
@@ -154,6 +158,12 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
         // var w = await v;
         // v = await v;
         // list = v;
+        //
+        var searchText = prefs.getString('searchText');
+        var searchTexts = await jsonDecode(searchText);
+        setState(() {
+          strList = List<String>.from(searchTexts);
+        });
 
         yield* Stream.fromFuture(v);
       } else {
@@ -161,9 +171,15 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
         //   var v = getUserInfo(menus);
         //   yield* Stream.fromFuture(v);
         // } else {
+        var searchText = prefs.getString('searchText');
+        var searchTexts = await jsonDecode(searchText);
+
         var menus = prefs.getString('menus');
         var v = getUserInfo(menus);
         list = await v;
+        setState(() {
+          strList = List<String>.from(searchTexts);
+        });
         yield* Stream.fromFuture(v);
       }
     }
@@ -305,182 +321,197 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
             backgroundColor: Colors.black,
             body: Column(children: <Widget>[
               Expanded(
-                flex: 3,
-                child: Container(
-                    child: StreamBuilder(
-                        stream: getAppsList(),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            if (!noAppsFound) {
-                              // count = 0;
+                  flex: 3,
+                  child: AlphabetListScrollView(
+                    strList: strList,
+                    highlightTextStyle: TextStyle(
+                      color: Colors.black,
+                    ),
+                    showPreview: true,
+                    itemBuilder: (context, index) {
+                      return StreamBuilder(
+                          stream: getAppsList(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              if (!noAppsFound) {
+                                // count = 0;
 
-                              return ShaderMask(
-                                  shaderCallback: (Rect bounds) {
-                                    return LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: <Color>[
-                                        Colors.white,
-                                        Colors.white,
-                                        Colors.white,
-                                        Colors.white,
-                                        Colors.black
-                                      ],
-                                    ).createShader(bounds);
-                                  },
-                                  child: ListView.builder(
-                                      key: key,
-                                      cacheExtent: 9999,
-                                      physics: BouncingScrollPhysics(),
-                                      itemCount: snapshot.data.length,
-                                      itemBuilder:
-                                          (BuildContext context, int index) {
-                                        // reset();
-                                        // if (userNameController.text == "") {
-                                        Future.delayed(
-                                            Duration(milliseconds: 250), () {
+                                return ShaderMask(
+                                    shaderCallback: (Rect bounds) {
+                                      return LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: <Color>[
+                                          Colors.white,
+                                          Colors.white,
+                                          Colors.white,
+                                          Colors.white,
+                                          Colors.black
+                                        ],
+                                      ).createShader(bounds);
+                                    },
+                                    child: ListView.builder(
+                                        key: key,
+                                        cacheExtent: 9999,
+                                        physics: BouncingScrollPhysics(),
+                                        itemCount: snapshot.data.length,
+                                        itemBuilder:
+                                            (BuildContext context, int index) {
                                           // reset();
-                                          _controller1.forward();
-                                        });
-                                        // }
-                                        if (snapshot.data[index]['appName']
-                                            .toString()
-                                            .toLowerCase()
-                                            .contains(userNameController.text
-                                                .toString()
-                                                .toLowerCase())) {
-                                          // return itemData[index];
-                                          return FadeTransition(
-                                              opacity: animation2,
-                                              child: buildItem(
-                                                  snapshot.data[index], index));
-                                        } else {
-                                          nosearchResult = true;
-                                          for (var i in snapshot.data) {
-                                            if (i['appName']
-                                                .toString()
-                                                .toLowerCase()
-                                                .contains(userNameController
-                                                    .text
-                                                    .toLowerCase())) {
-                                              nosearchResult = false;
+                                          // if (userNameController.text == "") {
+                                          Future.delayed(
+                                              Duration(milliseconds: 250), () {
+                                            // reset();
+                                            _controller1.forward();
+                                          });
+                                          // }
+                                          if (snapshot.data[index]['appName']
+                                              .toString()
+                                              .toLowerCase()
+                                              .contains(userNameController.text
+                                                  .toString()
+                                                  .toLowerCase())) {
+                                            // return itemData[index];
+                                            return FadeTransition(
+                                                opacity: animation2,
+                                                child: buildItem(
+                                                    snapshot.data[index],
+                                                    index));
+                                          } else {
+                                            nosearchResult = true;
+                                            for (var i in snapshot.data) {
+                                              if (i['appName']
+                                                  .toString()
+                                                  .toLowerCase()
+                                                  .contains(userNameController
+                                                      .text
+                                                      .toLowerCase())) {
+                                                nosearchResult = false;
+                                              }
                                             }
-                                          }
 
-                                          while (nosearchResult == true &&
-                                              userNameController.text != "") {
-                                            noAppsFound = true;
-                                            break;
-                                          }
+                                            while (nosearchResult == true &&
+                                                userNameController.text != "") {
+                                              noAppsFound = true;
+                                              break;
+                                            }
 
-                                          return Container(
-                                            color: Colors.red,
-                                          );
-                                        }
-                                      }));
-                            } else {
-                              var index = snapshot.data.indexWhere((ele) =>
-                                  ele["appName"]
-                                      .toString()
-                                      .toLowerCase()
-                                      .contains(userNameController.text));
-                              if (index == -1) {
-                                noAppsFound = true;
+                                            return Container(
+                                              color: Colors.red,
+                                            );
+                                          }
+                                        }));
                               } else {
-                                noAppsFound = false;
-                              }
-                              return Container(
-                                  child: Padding(
-                                      padding:
-                                          EdgeInsets.fromLTRB(20, 40, 20, 0),
-                                      child: Center(
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: <Widget>[
-                                            Padding(
-                                              padding: EdgeInsets.fromLTRB(
-                                                  0, 0, 0, 40),
-                                              child: Image.asset(
-                                                'assets/images/not-found.gif',
-                                                height: 100,
-                                                width: 100,
-                                                fit: BoxFit.contain,
-                                              ),
-                                            ),
-                                            TouchableOpacity(
-                                              onTap: () {
-                                                if (userNameController.text
-                                                        .contains('call') ||
-                                                    userNameController.text
-                                                        .contains('+91') ||
-                                                    isNumericUsingRegularExpression(
-                                                        userNameController
-                                                            .text)) {
-                                                  _launchCaller(
-                                                      userNameController.text);
-                                                } else {
-                                                  _launchPlayStore(
-                                                      userNameController.text);
-                                                }
-                                              },
-                                              child: Text(
-                                                isNumericUsingRegularExpression(
-                                                            userNameController
-                                                                .text) ||
-                                                        userNameController.text
-                                                            .contains('+91')
-                                                    ? userNameController.text
-                                                            .contains('call')
-                                                        ? '"${userNameController.text}" '
-                                                        : 'call "${userNameController.text}" '
-                                                    : userNameController.text
-                                                                .contains(
-                                                                    '.com') ||
-                                                            userNameController
-                                                                .text
-                                                                .contains(
-                                                                    'https')
-                                                        ? 'open "${userNameController.text}" in browser.'
-                                                        : 'search for "${userNameController.text}" in play store. ',
-                                                style: TextStyle(
-                                                  color: Colors.blue,
-                                                  fontSize: 20,
-                                                  fontFamily: 'Montserrat',
-                                                  decoration:
-                                                      TextDecoration.underline,
+                                var index = snapshot.data.indexWhere((ele) =>
+                                    ele["appName"]
+                                        .toString()
+                                        .toLowerCase()
+                                        .contains(userNameController.text));
+                                if (index == -1) {
+                                  noAppsFound = true;
+                                } else {
+                                  noAppsFound = false;
+                                }
+                                return Container(
+                                    child: Padding(
+                                        padding:
+                                            EdgeInsets.fromLTRB(20, 40, 20, 0),
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: <Widget>[
+                                              Padding(
+                                                padding: EdgeInsets.fromLTRB(
+                                                    0, 0, 0, 40),
+                                                child: Image.asset(
+                                                  'assets/images/not-found.gif',
+                                                  height: 100,
+                                                  width: 100,
+                                                  fit: BoxFit.contain,
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      )));
-                            }
-                          } else {
-                            return Center(
-                                child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: <Widget>[
-                                Image.asset(
-                                  'assets/images/dino.gif',
-                                  height: 250,
-                                  width: 250,
-                                  fit: BoxFit.contain,
-                                ),
-                                Text(
-                                  'Loading ...',
-                                  style: TextStyle(
-                                    color: Colors.white,
+                                              TouchableOpacity(
+                                                onTap: () {
+                                                  if (userNameController.text
+                                                          .contains('call') ||
+                                                      userNameController.text
+                                                          .contains('+91') ||
+                                                      isNumericUsingRegularExpression(
+                                                          userNameController
+                                                              .text)) {
+                                                    _launchCaller(
+                                                        userNameController
+                                                            .text);
+                                                  } else {
+                                                    _launchPlayStore(
+                                                        userNameController
+                                                            .text);
+                                                  }
+                                                },
+                                                child: Text(
+                                                  isNumericUsingRegularExpression(
+                                                              userNameController
+                                                                  .text) ||
+                                                          userNameController
+                                                              .text
+                                                              .contains('+91')
+                                                      ? userNameController.text
+                                                              .contains('call')
+                                                          ? '"${userNameController.text}" '
+                                                          : 'call "${userNameController.text}" '
+                                                      : userNameController.text
+                                                                  .contains(
+                                                                      '.com') ||
+                                                              userNameController
+                                                                  .text
+                                                                  .contains(
+                                                                      'https')
+                                                          ? 'open "${userNameController.text}" in browser.'
+                                                          : 'search for "${userNameController.text}" in play store. ',
+                                                  style: TextStyle(
+                                                    color: Colors.blue,
+                                                    fontSize: 20,
+                                                    fontFamily: 'Montserrat',
+                                                    decoration: TextDecoration
+                                                        .underline,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )));
+                              }
+                            } else {
+                              return Center(
+                                  child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: <Widget>[
+                                  Image.asset(
+                                    'assets/images/dino.gif',
+                                    height: 250,
+                                    width: 250,
+                                    fit: BoxFit.contain,
                                   ),
-                                )
-                              ],
-                            ));
-                          }
-                        })),
-              ),
+                                  Text(
+                                    'Loading ...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                ],
+                              ));
+                            }
+                          });
+                    },
+                    indexedHeight: (i) {
+                      return 80;
+                    },
+                    keyboardUsage: true,
+                  )),
               Expanded(
                   flex: 0,
                   child: Column(

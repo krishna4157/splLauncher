@@ -6,6 +6,7 @@ import 'package:Smart_Power_Launcher/Charging.dart';
 import 'package:battery/battery.dart';
 import 'package:device_apps/device_apps.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:touchable_opacity/touchable_opacity.dart';
@@ -22,11 +23,15 @@ var onChangeIcon = false;
 var i = 0;
 void main() {
   // GestureBinding.instance.resamplingEnabled = true;
-  runApp(MaterialApp(home: CountingApp(), // becomes the route named '/'
-      routes: <String, WidgetBuilder>{
-        '/secondRoute': (BuildContext context) => SecondRoute(),
-        '/charging': (BuildContext context) => Charging(),
-      }));
+  runApp(Shortcuts(
+      shortcuts: <LogicalKeySet, Intent>{
+        LogicalKeySet(LogicalKeyboardKey.select): ActivateIntent(),
+      },
+      child: MaterialApp(home: CountingApp(), // becomes the route named '/'
+          routes: <String, WidgetBuilder>{
+            '/secondRoute': (BuildContext context) => SecondRoute(),
+            '/charging': (BuildContext context) => Charging(),
+          })));
 }
 
 // _launchURL() async {
@@ -264,9 +269,6 @@ class _StartPageState extends State<StartPage>
 
       List futureList = [];
       var appsList = await apps;
-      var tempsAppList = v;
-      // appsList.remove((k, v) => k.contains('_'));
-      var count = 0;
       v.forEach((i) {
         var index = appsList.indexWhere((element) =>
             element.appName.toLowerCase().toString() ==
@@ -335,7 +337,7 @@ class _StartPageState extends State<StartPage>
                   'newAppIndex',
                   v.indexWhere(
                       (element) => element['appName'] == s['appName']));
-              prefs.setString('menus', jsonEncode(v));
+              // prefs.setString('menus', jsonEncode(v));
               // print(result);
               prefs.setBool('loading', false);
             }
@@ -483,13 +485,7 @@ class _StartPageState extends State<StartPage>
               );
             },
             onFocusGained: () {
-              print(
-                'Focus Gained.'
-                '\nTriggered when either [onVisibilityGained] or '
-                '[onForegroundGained] '
-                'is called.'
-                '\nEquivalent to onResume() on Android or viewDidAppear() on iOS.',
-              );
+              checkInstalledApps();
             },
             onVisibilityLost: () {
               print(
@@ -498,10 +494,7 @@ class _StartPageState extends State<StartPage>
               );
             },
             onVisibilityGained: () {
-              print(
-                'Visibility Gained.'
-                '\nIt means the widget is now visible within your app.',
-              );
+              // checkInstalledApps();
             },
             onForegroundLost: () {
               print(
@@ -512,7 +505,7 @@ class _StartPageState extends State<StartPage>
               );
             },
             onForegroundGained: () {
-              checkInstalledApps();
+              // checkInstalledApps();
             },
             child: TouchableOpacity(
                 onDoubleTap: () {
