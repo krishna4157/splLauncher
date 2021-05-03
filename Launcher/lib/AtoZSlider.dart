@@ -13,15 +13,19 @@ import 'package:url_launcher/url_launcher.dart';
 var userNameController = new TextEditingController();
 var noAppsFound = false;
 var selectedList = [];
+var color;
+// var powerSavingMode;
 
 // ignore: must_be_immutable
 class AtoZSlider extends StatefulWidget {
   List items;
   var callbackitemclick;
   var callbacksearchchange;
+  var powerSavingMode;
 
-  AtoZSlider(items, callbackitemclick, callbacksearchchange) {
+  AtoZSlider(items, callbackitemclick, callbacksearchchange, powerSavingMode) {
     this.items = items;
+    this.powerSavingMode = powerSavingMode;
     this.items.sort((a, b) =>
         removeDiacritics(a['appName'].toString().toUpperCase()).compareTo(
             removeDiacritics(b['appName'].toString().toUpperCase())));
@@ -57,7 +61,6 @@ class _AtoZSlider extends State<AtoZSlider> {
   var _animationcounter; //wait end of all animations
   var _sizeheightcontainer;
   var _sizefirstitem;
-
   //
   //var _lastoffset; //NOTE: [TO UNCOMMENT TO ADD THE GOING DOWNWARD CHANGING LETTER]
   ScrollController _scrollController;
@@ -245,6 +248,7 @@ class _AtoZSlider extends State<AtoZSlider> {
 
   @override
   Widget build(BuildContext context) {
+    color = getRandomColors();
     return LayoutBuilder(builder: (context, contrainsts) {
       _heightscroller = (contrainsts.biggest.height - _sizefirstitem) /
           _alphabet
@@ -357,24 +361,29 @@ class _AtoZSlider extends State<AtoZSlider> {
                                                             EdgeInsets.all(0),
                                                         child: Row(
                                                           children: [
-                                                            ClipRRect(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            30),
-                                                                child: Image
-                                                                    .memory(
-                                                                  // Uint8List.fromList(
-                                                                  _itemscache[
-                                                                          index]
-                                                                      ['icon'],
-                                                                  // .cast<int>()),
-                                                                  height: 40,
-                                                                  width: 40,
-                                                                )
-                                                                //
-                                                                // child: Image.memory(icon),
-                                                                ),
+                                                            if (widget.powerSavingMode ==
+                                                                    "off" ||
+                                                                widget.powerSavingMode ==
+                                                                    null)
+                                                              ClipRRect(
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              30),
+                                                                  child: Image
+                                                                      .memory(
+                                                                    // Uint8List.fromList(
+                                                                    _itemscache[
+                                                                            index]
+                                                                        [
+                                                                        'icon'],
+                                                                    // .cast<int>()),
+                                                                    height: 40,
+                                                                    width: 40,
+                                                                  )
+                                                                  //
+                                                                  // child: Image.memory(icon),
+                                                                  ),
                                                             Text(
                                                               "     ${_itemscache[index]['appName'].toString()}",
                                                               style: TextStyle(
@@ -608,22 +617,27 @@ class _AtoZSlider extends State<AtoZSlider> {
                               onChanged: onsearchtextchange,
                               focusNode: _focusNode,
                               decoration: InputDecoration(
-                                  prefixIcon: OutlinedButton(
-                                      onPressed: () {
-                                        DeviceApps.openApp(
-                                            "com.google.android.apps.googleassistant");
-                                      },
-                                      child:
-                                          // Padding(
-                                          //     padding:
-                                          //         EdgeInsets.fromLTRB(0, 0, 10, 0),
-                                          //     child:
-                                          Image.asset(
-                                        'assets/images/ga1.png',
-                                        height: 30,
-                                        width: 30,
-                                        fit: BoxFit.contain,
-                                      )),
+                                  prefixIcon: widget.powerSavingMode == 'on'
+                                      ? Icon(
+                                          Icons.search,
+                                          color: Colors.blueAccent,
+                                        )
+                                      : OutlinedButton(
+                                          onPressed: () {
+                                            DeviceApps.openApp(
+                                                "com.google.android.apps.googleassistant");
+                                          },
+                                          child:
+                                              // Padding(
+                                              //     padding:
+                                              //         EdgeInsets.fromLTRB(0, 0, 10, 0),
+                                              //     child:
+                                              Image.asset(
+                                            'assets/images/ga1.png',
+                                            height: 30,
+                                            width: 30,
+                                            fit: BoxFit.contain,
+                                          )),
                                   hintText:
                                       "  Search your apps and content here",
                                   hintStyle: TextStyle(
@@ -695,9 +709,8 @@ class RecentButtons extends StatelessWidget {
   final String title;
   final String packageName;
 
-  bool isPackageIncluded;
+  // bool isPackageIncluded;
   RecentButtons({Key key, this.title, this.packageName}) : super(key: key);
-  final Color color = getRandomColors();
 
   get icon => null;
   @override

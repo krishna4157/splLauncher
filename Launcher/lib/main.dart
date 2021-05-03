@@ -7,6 +7,7 @@ import 'package:battery/battery.dart';
 import 'package:device_apps/device_apps.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:installed_apps/installed_apps.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:touchable_opacity/touchable_opacity.dart';
@@ -18,9 +19,14 @@ import 'alphabetListView.dart';
 // import 'package:hardware_buttons/hardware_buttons.dart';
 var charging = false;
 var isNotPresent = false;
+var isVisible = false;
+var batteryPercentage;
+var batterySaverMode = 'off';
+var switchState = 'on';
 StreamSubscription _volumeButtonSubscription;
 var onChangeIcon = false;
 var i = 0;
+List strList = [];
 void main() {
   // GestureBinding.instance.resamplingEnabled = true;
   runApp(Shortcuts(
@@ -29,7 +35,7 @@ void main() {
       },
       child: MaterialApp(home: CountingApp(), // becomes the route named '/'
           routes: <String, WidgetBuilder>{
-            '/secondRoute': (BuildContext context) => SecondRoute(),
+            '/appsDrawer': (BuildContext context) => AppsDrawer(),
             '/charging': (BuildContext context) => Charging(),
           })));
 }
@@ -169,11 +175,11 @@ class _StartPageState extends State<StartPage>
 
   void _navigateToNewPage(counter) {
     Navigator.push(
-        context,
-        PageTransition(
-            type: PageTransitionType.bottomToTop,
-            duration: Duration(milliseconds: 300),
-            child: MainApp()));
+        context, MaterialPageRoute(builder: (context) => AppsDrawer()));
+    // PageTransition(
+    //     type: PageTransitionType.bottomToTop,
+    //     duration: Duration(microseconds: 10),
+    //     child: MainApp()));
   }
 
   startTimer() async {
@@ -186,6 +192,36 @@ class _StartPageState extends State<StartPage>
     prefs.setString('prevChargeState', 'disCharge');
   }
 
+  checkBatterylevel() async {
+    final prefs = await SharedPreferences.getInstance();
+    final Battery _battery = new Battery();
+    var batteryLevel = await _battery.batteryLevel;
+    prefs.setInt('BatteryLevel', batteryLevel);
+    var batterySaverMode = prefs.getString('BatterySaverMode');
+
+    setStateIfMounted(() {
+      batteryPercentage = batteryLevel;
+      batterySaverMode = batterySaverMode;
+    });
+  }
+
+  setBatterySavorMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    var prevbatterySaverMode = prefs.getString('BatterySaverMode');
+    if (prevbatterySaverMode == null || prevbatterySaverMode == 'off') {
+      await prefs.setString('BatterySaverMode', 'on');
+      switchState = 'off';
+    } else {
+      await prefs.setString('BatterySaverMode', 'off');
+      switchState = 'on';
+    }
+    batterySaverMode = await batterySaverMode;
+    setStateIfMounted(() {
+      batterySaverMode = batterySaverMode;
+      switchState = switchState;
+    });
+  }
+
   StreamSubscription<BatteryState> _batteryStateSubscription;
   var _battery = new Battery();
   Timer timer;
@@ -194,7 +230,7 @@ class _StartPageState extends State<StartPage>
   void initState() {
     super.initState();
     checkInstalledApps();
-
+    checkBatterylevel();
     // startTimer();
 
     // checkInstalledApps();
@@ -207,7 +243,7 @@ class _StartPageState extends State<StartPage>
         setState(() {
           charging = true;
         });
-        navigateToCharging();
+        // navigateToCharging();
       } else {
         setToDefault();
       }
@@ -262,7 +298,7 @@ class _StartPageState extends State<StartPage>
     final prefs = await SharedPreferences.getInstance();
     prefs.setBool('loading', false);
     var menus = prefs.getString('menus');
-    if (menus != null) {
+    if (strList.length != 0) {
       var v = await getUserInfo(menus);
       Future<List<Application>> apps = DeviceApps.getInstalledApplications(
           includeAppIcons: true, includeSystemApps: true);
@@ -274,8 +310,6 @@ class _StartPageState extends State<StartPage>
             element.appName.toLowerCase().toString() ==
             i['appName'].toLowerCase().toString());
         if (index == -1) {
-          prefs.setBool('loading', true);
-
           var s = {
             'appName': i['appName'],
             'packageName': i['packageName'],
@@ -286,16 +320,14 @@ class _StartPageState extends State<StartPage>
           prefs.setString('menus', jsonEncode(v));
           // print(result);
 
-          prefs.setBool('loading', false);
+          prefs.setBool('loading', true);
           prefs.setBool('isRecentAppInstalled', true);
         }
       });
 
       for (var i in appsList) {
-        bool isSystemApp = i.apkFilePath.contains("/data/app/") ? false : true;
-        if (i.appName.toLowerCase() == 'gallery' ||
-            isSystemApp && i.appName.toLowerCase() == 'phone' ||
-            !isSystemApp) {
+        bool isSystemApp = await InstalledApps.isSystemApp(i.packageName);
+        if (isSystemApp == false || i.appName.toLowerCase() == "phone") {
           // print(i.appName);
           // if (i.appName.toLowerCase() == "tusk") {
           //   var s = 0;
@@ -309,10 +341,6 @@ class _StartPageState extends State<StartPage>
           var index = v.indexWhere((element) =>
               element['appName'].toLowerCase().toString() ==
               i.appName.toLowerCase().toString());
-
-          if (index2 == -1) {
-            // print('tusk');
-          }
 
           if (index == -1) {
             print('tusk 123');
@@ -486,6 +514,7 @@ class _StartPageState extends State<StartPage>
             },
             onFocusGained: () {
               checkInstalledApps();
+              checkBatterylevel();
             },
             onVisibilityLost: () {
               print(
@@ -617,54 +646,87 @@ class _StartPageState extends State<StartPage>
                                   ),
 
                                   //menu button
-                                  ConstrainedBox(
-                                    constraints: BoxConstraints.tightFor(
-                                        width: onChangeIcon ? 80 : 50,
-                                        height: onChangeIcon ? 80 : 50),
-                                    child: ElevatedButton(
-                                      child: onChangeIcon == true
-                                          ? Image.asset(
-                                              'assets/images/ga1.png',
-                                              height: 80,
-                                              width: 80,
-                                              fit: BoxFit.contain,
-                                            )
-                                          : AppDrawerIcon(),
-                                      onLongPress: () => {
-                                        setState(() {
-                                          onChangeIcon = true;
-                                        }),
-                                        Future.delayed(Duration(seconds: 1),
-                                            () {
-                                          DeviceApps.openApp(
-                                              "com.google.android.apps.googleassistant");
-                                          setState(() {
-                                            onChangeIcon = false;
-                                          });
-                                        })
-                                      },
-                                      onPressed: () =>
-                                          _submit(counter: _counter),
-                                      style: ButtonStyle(
-                                        shape: MaterialStateProperty.all<
-                                                RoundedRectangleBorder>(
-                                            RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(30.0),
-                                        )),
-                                        backgroundColor: MaterialStateProperty
-                                            .resolveWith<Color>(
-                                          (Set<MaterialState> states) {
-                                            if (states.contains(
-                                                MaterialState.pressed))
-                                              return Colors.red;
-                                            return Colors
-                                                .black; // Use the component's default.
-                                          },
+                                  Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        if ((batteryPercentage != 0 &&
+                                                batteryPercentage < 20) ||
+                                            (switchState == 'off' &&
+                                                batteryPercentage != 0))
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              setBatterySavorMode();
+                                            },
+                                            style: ButtonStyle(
+                                                shape: MaterialStateProperty.all<
+                                                        RoundedRectangleBorder>(
+                                                    RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          18.0),
+                                                )),
+                                                backgroundColor:
+                                                    MaterialStateProperty
+                                                        .resolveWith<Color>(
+                                                            (states) =>
+                                                                Colors.red)),
+                                            child: Text(
+                                              'Turn $switchState power saver mode',
+                                              style: TextStyle(
+                                                  color: Colors.white),
+                                            ),
+                                          ),
+                                        ConstrainedBox(
+                                          constraints: BoxConstraints.tightFor(
+                                              width: onChangeIcon ? 80 : 50,
+                                              height: onChangeIcon ? 80 : 50),
+                                          child: ElevatedButton(
+                                            child: onChangeIcon == true
+                                                ? Image.asset(
+                                                    'assets/images/ga1.png',
+                                                    height: 80,
+                                                    width: 80,
+                                                    fit: BoxFit.contain,
+                                                  )
+                                                : AppDrawerIcon(),
+                                            onLongPress: () => {
+                                              setState(() {
+                                                onChangeIcon = true;
+                                              }),
+                                              Future.delayed(
+                                                  Duration(seconds: 1), () {
+                                                DeviceApps.openApp(
+                                                    "com.google.android.apps.googleassistant");
+                                                setState(() {
+                                                  onChangeIcon = false;
+                                                });
+                                              })
+                                            },
+                                            onPressed: () =>
+                                                _submit(counter: _counter),
+                                            style: ButtonStyle(
+                                              shape: MaterialStateProperty.all<
+                                                      RoundedRectangleBorder>(
+                                                  RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(30.0),
+                                              )),
+                                              backgroundColor:
+                                                  MaterialStateProperty
+                                                      .resolveWith<Color>(
+                                                (Set<MaterialState> states) {
+                                                  if (states.contains(
+                                                      MaterialState.pressed))
+                                                    return Colors.red;
+                                                  return Colors
+                                                      .black; // Use the component's default.
+                                                },
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  ),
+                                      ]),
                                   //
                                   ConstrainedBox(
                                     constraints: BoxConstraints.tightFor(

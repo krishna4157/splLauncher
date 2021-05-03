@@ -6,24 +6,17 @@ import 'package:Smart_Power_Launcher/AtoZSlider.dart';
 import 'package:Smart_Power_Launcher/main.dart';
 import 'package:device_apps/device_apps.dart';
 import 'package:flutter/material.dart';
+import 'package:installed_apps/installed_apps.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// void main() => runApp(MainApp());
-var list = [];
+// void main() => runApp(AppsDrawer());
+// var list = [];
 Timer timer;
 
-class User {
-  final String name;
-  final String company;
-  final bool favourite;
-
-  User(this.name, this.company, this.favourite);
-}
-
-class MainApp extends StatefulWidget {
+class AppsDrawer extends StatefulWidget {
   @override
-  _MainAppState createState() => _MainAppState();
+  _AppsDrawerState createState() => _AppsDrawerState();
 }
 
 Future<List> getUserInfo(menus) async {
@@ -39,16 +32,15 @@ Future<List> getUserInfo(menus) async {
   return null;
 }
 
-class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
-  List<User> userList = [];
-  List strList = [];
+class _AppsDrawerState extends State<AppsDrawer> with TickerProviderStateMixin {
   var loading = true;
+  var powerSavingMode = 'off';
   List<Widget> favouriteList = [];
   List<Widget> normalList = [];
   TextEditingController searchController = TextEditingController();
   AnimationController _controller1;
   Animation<double> animation2;
-
+  var v;
   void setStateIfMounted(f) {
     if (mounted) setState(f);
   }
@@ -56,25 +48,30 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
   getAppsList() async {
     final prefs = await SharedPreferences.getInstance();
     var menus = prefs.getString('menus');
-    var removedAppName = prefs.getString('removedAppName');
-    var newApp = prefs.getString('newApp');
-    var newAppIndex = prefs.getInt('newAppIndex');
+    // var newApp = prefs.getString('newApp');
+    // var newAppIndex = prefs.getInt('newAppIndex');
 
-    if (menus == null) {
+    if (menus == null || menus == "null") {
       Future<List<Application>> apps = DeviceApps.getInstalledApplications(
           includeAppIcons: true, includeSystemApps: true);
       List<AppsList> futureList = [];
       var appsList = await apps;
       for (var i in appsList) {
-        bool isSystemApp = i.apkFilePath.contains("/data/app/") ? false : true;
-        if (i.appName.toLowerCase() == 'gallery' ||
-            isSystemApp && i.appName.toLowerCase() == 'phone' ||
-            !isSystemApp) {
-          AppsList appsLists = AppsList(i.appName, i.packageName,
-              i is ApplicationWithIcon ? i.icon : null);
-          appsLists.icon = Uint8List.fromList(appsLists.icon.cast<int>());
+        // bool isSystemApp = i.apkFilePath.contains("/data/app/") ? false : true;
+        // if (i.appName.toLowerCase() == 'gallery' ||
+        //     isSystemApp && i.appName.toLowerCase() == 'phone' ||
+        //     !isSystemApp) {
+        AppsList appsLists = AppsList(
+            i.appName, i.packageName, i is ApplicationWithIcon ? i.icon : null);
+        appsLists.icon = Uint8List.fromList(appsLists.icon.cast<int>());
+        bool isSystemApp = await InstalledApps.isSystemApp(i.packageName);
+        // if (i.appName.contains("2")) {
+        //   print(isSystemApp);
+        // }
+        if (isSystemApp == false || i.appName.toLowerCase() == "phone") {
           futureList.add(appsLists);
         }
+        // }
       }
 
       futureList.sort((a, b) => a.appName
@@ -82,7 +79,6 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
           .toLowerCase()
           .compareTo(b.appName.toString().toLowerCase()));
 
-      var v;
       var z =
           await prefs.setString('menus', jsonEncode(futureList)).then((value) {
         menus = prefs.getString('menus');
@@ -98,78 +94,182 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
       });
       setStateIfMounted(() {
         strList = storedList;
-        list = storedList;
+        // list = storedList;
         loading = false;
       });
     } else {
-      var menus = prefs.getString('menus');
-      // var strList = prefs.getString('strList');
-      var v = await getUserInfo(menus);
-      if (removedAppName != null && removedAppName != "") {
-        strList.clear();
-        setStateIfMounted(() {
-          loading = true;
-        });
-        v.removeWhere((element) => element['appName'] == removedAppName);
-        await prefs.setString('menus', jsonEncode(v));
-        prefs.setString('removedAppName', "");
-      }
+      if (strList.length == 0) {
+        var menus = prefs.getString('menus');
+        // var strList = prefs.getString('strList');
+        v = await getUserInfo(menus);
 
-      if (newApp != null && newApp != "") {
-        strList.clear();
-        setStateIfMounted(() {
-          loading = true;
-        });
+        // if (newApp != null && newApp != "") {
+        //   strList.clear();
+        //   setStateIfMounted(() {
+        //     loading = true;
+        //   });
 
-        // var decodedNewApp = await getUserInfo(newApp);
-        var d = await jsonDecode(newApp);
-        // print(d);
-        var e = {
-          'appName': d['appName'],
-          'packageName': d['packageName'],
-          'icon': d['icon']
-        };
-        print(e);
-        var index = v.indexWhere((element) =>
-            element['appName'].toLowerCase().toString() ==
-            d['appName'].toLowerCase().toString());
-        if (index == -1) {
-          v.insert(newAppIndex, e);
-        }
-        await prefs.setString('menus', jsonEncode(v));
-        prefs.setString('newApp', "");
-        prefs.setInt('newAppIndex', 0);
+        //   // var decodedNewApp = await getUserInfo(newApp);
+        //   var d = await jsonDecode(newApp);
+        //   // print(d);
+        //   var e = {
+        //     'appName': d['appName'],
+        //     'packageName': d['packageName'],
+        //     'icon': Uint8List.fromList(d['icon'].cast<int>())
+        //   };
+        //   // print(e);
+        //   var index = strList.indexWhere((element) =>
+        //       element['appName'].toLowerCase().toString() ==
+        //       d['appName'].toLowerCase().toString());
+        //   if (index == -1) {
+        //     strList.insert(newAppIndex, e);
+        //     await prefs.setString('menus', jsonEncode(strList));
+        //     prefs.setString('newApp', "");
+        //     prefs.setInt('newAppIndex', 0);
+        //   }
+        // }
+        // if (strList.length == 0) {
+        v.forEach((element) {
+          element['icon'] = Uint8List.fromList(element['icon'].cast<int>());
+        });
+        setStateIfMounted(() {
+          strList = v;
+          loading = false;
+        });
+        // } else {
+        // setStateIfMounted(() {
+        //   // strList = v;
+        //   loading = false;
+        // });
+        // }
+      } else {
+        // strList.clear();
+        // setStateIfMounted(() {
+        //   strList = strList;
+        // });
+        // if (removedAppName != null && removedAppName != "") {
+        //   strList.clear();
+        //   setStateIfMounted(() {
+        //     loading = true;
+        //   });
+        //   strList
+        //       .removeWhere((element) => element['appName'] == removedAppName);
+        //   await prefs.setString('menus', jsonEncode(v));
+        //   prefs.setString('removedAppName', "");
+        //   setState(() {
+        //     strList = strList;
+        //   });
+        // }
+
+        // if (strList.length == 0) {
+
       }
+    }
+
+    // Future.delayed(Duration(milliseconds: 400), () {
+    //   _controller1.forward();
+    // });
+  }
+
+  checkInstalledAppsList() async {
+    final prefs = await SharedPreferences.getInstance();
+    var menus = prefs.getString('menus');
+    var removedAppName = prefs.getString('removedAppName');
+    var newApp = prefs.getString('newApp');
+    var newAppIndex = prefs.getInt('newAppIndex');
+
+    if (newApp != null && newApp != "") {
+      // strList.clear();
+      setStateIfMounted(() {
+        loading = true;
+      });
+
+      // var decodedNewApp = await getUserInfo(newApp);
+      var d = await jsonDecode(newApp);
+      // print(d);
+      var e = {
+        'appName': d['appName'],
+        'packageName': d['packageName'],
+        'icon': Uint8List.fromList(d['icon'].cast<int>())
+      };
+      // print(e);
+      var index = strList.indexWhere((element) =>
+          element['appName'].toLowerCase().toString() ==
+          d['appName'].toLowerCase().toString());
+      if (index == -1) {
+        strList.insert(newAppIndex, e);
+      }
+      // strList = v;
+      await prefs.setString('menus', jsonEncode(strList));
+      await prefs.setString('newApp', "");
+      await prefs.setInt('newAppIndex', 0);
 
       v.forEach((element) {
         element['icon'] = Uint8List.fromList(element['icon'].cast<int>());
       });
       setStateIfMounted(() {
-        list = v;
-        strList = v;
         loading = false;
+        strList = strList;
       });
     }
 
-    Future.delayed(Duration(milliseconds: 500), () {
-      _controller1.forward();
+    if (removedAppName != null && removedAppName != "") {
+      setStateIfMounted(() {
+        loading = true;
+      });
+      //
+      v = await getUserInfo(menus);
+
+      strList.removeWhere((element) => element['appName'] == removedAppName);
+      v.removeWhere((element) => element['appName'] == removedAppName);
+      var t = await prefs.setString('menus', jsonEncode(v));
+      var t1 = await prefs.setString('removedAppName', "");
+      print(t);
+      print(t1);
+      setState(() {
+        strList = strList;
+        loading = false;
+      });
+    }
+  }
+
+  updateAppsList() async {
+    Stream<ApplicationEvent> apps = await DeviceApps.listenToAppsChanges();
+    print(apps);
+  }
+
+  setPowerSavingModeStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    batterySaverMode = prefs.getString('BatterySaverMode');
+    setStateIfMounted(() {
+      powerSavingMode = batterySaverMode;
     });
   }
 
   @override
   void initState() {
-    getAppsList();
+    // updateAppsList();
+    setPowerSavingModeStatus();
+    if (strList.length == 0) {
+      getAppsList();
+    }
+
+    // checkInstalledAppsList();
+
     searchController.addListener(() {});
     super.initState();
     startTimer();
     _controller1 = AnimationController(
-      duration: Duration(milliseconds: 500),
+      duration: Duration(milliseconds: 400),
       vsync: this,
     );
     animation2 = Tween<double>(begin: 0.0, end: 1.0).animate(_controller1)
       ..addListener(() {
         // print('hello');
       });
+    setStateIfMounted(() {
+      loading = false;
+    });
   }
 
   startTimer() async {
@@ -184,8 +284,9 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
       setStateIfMounted(() {
         loading = true;
       });
-      getAppsList();
+      checkInstalledAppsList();
       await prefs.setBool('isRecentAppInstalled', false);
+      await prefs.setBool('loading', false);
       setStateIfMounted(() {
         loading = false;
       });
@@ -202,6 +303,9 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     if (strList.length != 0 && loading == false) {
+      Future.delayed(Duration(milliseconds: 50), () {
+        _controller1.forward();
+      });
       return Dismissible(
           // Show a red background as the item is swiped away.
           background: Container(
@@ -221,9 +325,10 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
                   backgroundColor: Colors.black,
                   body: FadeTransition(
                       opacity: animation2,
+                      // opacity: animation2,
                       child: Padding(
                           padding: EdgeInsets.fromLTRB(5, 30, 0, 0),
-                          child: new AtoZSlider(
+                          child: AtoZSlider(
                               strList,
                               (i) => {
                                     debugPrint("Click on : (" +
@@ -231,8 +336,8 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
                                         ") -> " +
                                         strList[i].appName)
                                   },
-                              (word) =>
-                                  {debugPrint("SearchWord: " + word)}))))));
+                              (word) => {debugPrint("SearchWord: " + word)},
+                              powerSavingMode))))));
     } else {
       return Dismissible(
           // Show a red background as the item is swiped away.
@@ -260,11 +365,11 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
                 fit: BoxFit.contain,
               ),
               Text(
-                'Loading ...',
+                'Loading',
                 style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                ),
+                    fontSize: 18,
+                    color: Colors.white,
+                    decorationStyle: TextDecorationStyle.dashed),
               )
             ],
           )));

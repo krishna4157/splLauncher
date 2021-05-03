@@ -153,10 +153,35 @@ class MyClipPath extends AnimatedWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text('$batteryPercentage',
-                style: TextStyle(color: Colors.white, fontSize: height / 6)),
-            Text('tap to dismiss',
-                style: TextStyle(color: Colors.white, fontSize: 15.0))
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('$batteryPercentage',
+                    style: TextStyle(
+                      color: Colors.white,
+                      // fontWeight: FontWeight.normal,
+                      fontSize: 120,
+                    )),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
+                  child: Text('%',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 50,
+                          fontFamily: 'Quicksand-Light')),
+                )
+              ],
+            ),
+            Icon(
+              Icons.flash_on_outlined,
+              color: Colors.yellow,
+              size: 30,
+            ),
+            Padding(
+                padding: EdgeInsets.fromLTRB(0, 40, 0, 0),
+                child: Text('tap to dismiss',
+                    style: TextStyle(color: Colors.white, fontSize: 15.0)))
           ],
         ))
       ]),
