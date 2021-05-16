@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:typed_data';
 
 // import 'package:Smart_Power_Launcher/newPage.dart';
 import 'package:Smart_Power_Launcher/main.dart';
@@ -31,18 +30,8 @@ class AtoZSlider extends StatefulWidget {
             removeDiacritics(b['appName'].toString().toUpperCase())));
     this.callbackitemclick = callbackitemclick;
     this.callbacksearchchange = callbacksearchchange;
-  } // prend une liste en param
-/*
-  void setItems(aca) // to easy set new item
-  {
-    this.items = aca;
-    forceSort();
   }
-  void forceSort() {
-    this.items.sort((a, b) => removeDiacritics(a.toString().toUpperCase())
-        .compareTo(removeDiacritics(b.toString().toUpperCase())));
-  }
-*/ //NOTE: not used
+
   @override
   _AtoZSlider createState() => new _AtoZSlider();
 }
@@ -57,6 +46,7 @@ class _AtoZSlider extends State<AtoZSlider> {
   var _alphabet;
   var _customscrollisscrolling;
   var _itemsizeheight;
+  // ignore: unused_field
   var _itemfontsize;
   var _animationcounter; //wait end of all animations
   var _sizeheightcontainer;
@@ -225,7 +215,7 @@ class _AtoZSlider extends State<AtoZSlider> {
     _focusNode.addListener(onfocustextfield);
     _scrollController = ScrollController();
     _scrollController.addListener(onscrolllistview);
-    _alphabet = new List<String>();
+    _alphabet = <String>[];
     for (var i = 0; i < _itemscache.length; i++) {
       if (_itemscache[i].toString().trim().length > 0) {
         var fletter = removeDiacritics(
@@ -249,6 +239,9 @@ class _AtoZSlider extends State<AtoZSlider> {
   @override
   Widget build(BuildContext context) {
     color = getRandomColors();
+    // ignore: non_constant_identifier_names
+    var c_width = MediaQuery.of(context).size.width * 0.6;
+
     return LayoutBuilder(builder: (context, contrainsts) {
       _heightscroller = (contrainsts.biggest.height - _sizefirstitem) /
           _alphabet
@@ -295,18 +288,9 @@ class _AtoZSlider extends State<AtoZSlider> {
                               //NOTE: How you want to generate your items
                               return GestureDetector(
                                   onTap: () => onItemClick(index),
-                                  child:
-                                      // Text(_itemscache[index].toString(),
-                                      //     style: new TextStyle(fontSize: _itemfontsize))
-                                      Column(children: [
-                                    ElevatedButton(
-                                        style: ButtonStyle(
-                                            backgroundColor:
-                                                MaterialStateProperty
-                                                    .resolveWith<Color>(
-                                                        (states) =>
-                                                            Colors.black)),
-                                        onPressed: () {
+                                  child: Column(children: [
+                                    TouchableOpacity(
+                                        onTap: () {
                                           var s = {
                                             'packageName': _itemscache[index]
                                                 ['packageName'],
@@ -347,7 +331,8 @@ class _AtoZSlider extends State<AtoZSlider> {
                                           }
                                         },
                                         child: AnimatedContainer(
-                                            duration: Duration(seconds: 1),
+                                            duration:
+                                                Duration(milliseconds: 500),
                                             color: Colors.black,
                                             width: MediaQuery.of(context)
                                                 .size
@@ -384,13 +369,45 @@ class _AtoZSlider extends State<AtoZSlider> {
                                                                   //
                                                                   // child: Image.memory(icon),
                                                                   ),
-                                                            Text(
-                                                              "     ${_itemscache[index]['appName'].toString()}",
-                                                              style: TextStyle(
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
+                                                            Container(
+                                                              width: 10,
                                                             ),
+                                                            Container(
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                            .all(
+                                                                        1.0),
+                                                                width: c_width,
+                                                                child:
+                                                                    new Column(
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .start,
+                                                                  crossAxisAlignment:
+                                                                      CrossAxisAlignment
+                                                                          .start,
+                                                                  children: <
+                                                                      Widget>[
+                                                                    Text(
+                                                                      "${_itemscache[index]['appName'].toString()}",
+                                                                      textAlign:
+                                                                          TextAlign
+                                                                              .left,
+                                                                      style:
+                                                                          TextStyle(
+                                                                        color: Colors
+                                                                            .white,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                )),
+                                                            // Text(
+                                                            //   "     ${_itemscache[index]['appName'].toString()}",
+                                                            //   style: TextStyle(
+                                                            //     color: Colors
+                                                            //         .white,
+                                                            //   ),
+                                                            // ),
                                                           ],
                                                         ))
                                                   ],
@@ -535,70 +552,6 @@ class _AtoZSlider extends State<AtoZSlider> {
                           ],
                         ),
                       )))),
-        // Expanded(
-        //     flex: 0,
-        //     child: Container(
-        //       padding: EdgeInsets.all(10),
-        //       height: _sizefirstitem,
-        //       child: Column(children: <Widget>[
-        //         TextFormField(
-        //           controller: userNameController,
-        //           onChanged: onsearchtextchange,
-        //           focusNode: _focusNode,
-        //           decoration: InputDecoration(
-        //               prefixIcon: Icon(
-        //                 Icons.search,
-        //                 color: Colors.blueAccent,
-        //               ),
-        //               hintText: "Search your apps and content here",
-        //               hintStyle: TextStyle(color: Colors.white, fontSize: 15.0),
-        //               suffixIcon: IconButton(
-        //                 color: Colors.red,
-        //                 onPressed: () {
-        //                   reset();
-        //                 },
-        //                 icon: Icon(
-        //                   Icons.clear,
-        //                   color: Colors.red,
-        //                 ),
-        //               )),
-        //           keyboardType: TextInputType.emailAddress,
-        //           onFieldSubmitted: (value) {
-        //             //Validator
-        //           },
-        //           style: TextStyle(
-        //               color: Colors.white,
-        //               fontSize: 25,
-        //               fontFamily: 'Montserrat'),
-        //         ),
-        //         // Padding(
-        //         //   padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
-        //         //   child: Container(
-        //         //     height: selectedList.length > 0 ? 60.0 : 0,
-        //         //     child: ListView(
-        //         //       scrollDirection: Axis.horizontal,
-        //         //       children: <Widget>[
-        //         //         for (var i in selectedList)
-        //         //           RecentButtons(
-        //         //             title: i['title'],
-        //         //             packageName: i['packageName'],
-        //         //           ),
-        //         //       ],
-        //         //     ),
-        //         //   ),
-        //         // ),
-        //         // TextField(
-        //         //   focusNode: _focusNode,
-        //         //   onChanged: onsearchtextchange,
-        //         //   decoration: InputDecoration(
-        //         //       labelText: "search For apps and content",
-        //         //       hintText: "Search",
-        //         //       prefixIcon: Icon(Icons.search),
-        //         //       border: OutlineInputBorder(
-        //         //           borderRadius: BorderRadius.all(Radius.circular(6.0)))),
-        //         // )
-        //       ]),
-        //     )),
         Expanded(
             flex: 0,
             child: Column(
@@ -627,12 +580,7 @@ class _AtoZSlider extends State<AtoZSlider> {
                                             DeviceApps.openApp(
                                                 "com.google.android.apps.googleassistant");
                                           },
-                                          child:
-                                              // Padding(
-                                              //     padding:
-                                              //         EdgeInsets.fromLTRB(0, 0, 10, 0),
-                                              //     child:
-                                              Image.asset(
+                                          child: Image.asset(
                                             'assets/images/ga1.png',
                                             height: 30,
                                             width: 30,

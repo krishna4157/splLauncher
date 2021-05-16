@@ -614,8 +614,6 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
     final prefs = await SharedPreferences.getInstance();
     final menus = prefs.getString('menus');
     final removedAppName = prefs.getString('removedAppName');
-
-    var removeApp = '1Intro';
     var item = await getUserInfo(menus);
     final removedItem =
         item.where((element) => element['appName'] == removedAppName).single;
@@ -629,14 +627,14 @@ class _SharedPreferencesDemoState extends State<SharedPreferencesDemo>
   }
 
   void insertItem(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    final menus = prefs.getString('menus');
-    var removeApp = '1Intro';
-    final item = await getUserInfo(menus);
-    final removedItem =
-        item.where((element) => element['appName'] == removeApp).single;
-    final removedIndex =
-        item.indexWhere((element) => element['appName'] == removeApp);
+    // final prefs = await SharedPreferences.getInstance();
+    // final menus = prefs.getString('menus');
+    // var removeApp = '1Intro';
+    // final item = await getUserInfo(menus);
+    // final removedItem =
+    //     item.where((element) => element['appName'] == removeApp).single;
+    // final removedIndex =
+    //     item.indexWhere((element) => element['appName'] == removeApp);
     key.currentState.insertItem(index);
   }
 }

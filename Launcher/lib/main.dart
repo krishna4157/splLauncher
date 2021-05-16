@@ -11,7 +11,6 @@ import 'package:installed_apps/installed_apps.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:touchable_opacity/touchable_opacity.dart';
-import 'newPage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:focus_detector/focus_detector.dart';
 import 'alphabetListView.dart';
@@ -39,15 +38,6 @@ void main() {
             '/charging': (BuildContext context) => Charging(),
           })));
 }
-
-// _launchURL() async {
-//   // Replace 12345678 with your tel. no.
-//   DeviceApps.openApp("com.android.incallui");
-//   // android_intent.Intent()
-//   //   ..setAction(android_action.Action.ACTION_CALL)
-//   //   ..setData(Uri(scheme: "tel", path: "12345678"))
-//   //   ..startActivity().catchError((e) => print(e));
-// }
 
 _launchCaller(val) async {
   var url = "tel:$val";
@@ -83,15 +73,6 @@ class CountingApp extends StatelessWidget {
     return MaterialApp(
         title: 'SPL Launcher',
         theme: ThemeData(
-          // This is the theme of your application.
-          //
-          // Try running your application with "flutter run". You'll see the
-          // application has a blue toolbar. Then, without quitting the app, try
-          // changing the primarySwatch below to Colors.green and then invoke
-          // "hot reload" (press "r" in the console where you ran "flutter run",
-          // or simply save your changes to "hot reload" in a Flutter IDE).
-          // Notice that the counter didn't reset back to zero; the application
-          // is not restarted.
           primarySwatch: Colors.green,
         ),
         home: StartPage(title: 'SPL Launcher'));
@@ -122,52 +103,6 @@ class _StartPageState extends State<StartPage>
   Animation<double> animation;
   AnimationController controller;
   Animation<double> animation2;
-
-  // void _incrementCounter() {
-  //   setState(() {
-  //     // This call to setState tells the Flutter framework that something has
-  //     // changed in this State, which causes it to rerun the build method below
-  //     // so that the display can reflect the updated values. If we changed
-  //     // _counter without calling setState(), then the build method would not be
-  //     // called again, and so nothing would appear to happen.
-  //     _counter++;
-  //   });
-  // }
-
-  // Future<void> _showMyDialog(counter) async {
-  //   return showDialog<void>(
-  //     context: context,
-  //     barrierDismissible: false, // user must tap button!
-  //     builder: (BuildContext context) {
-  //       return AlertDialog(
-  //         title: Text('SUCCESS'),
-  //         content: SingleChildScrollView(
-  //           child: ListBody(
-  //             children: <Widget>[
-  //               Text(''),
-  //               Text('do you want to save these details ?'),
-  //             ],
-  //           ),
-  //         ),
-  //         actions: <Widget>[
-  //           TextButton(
-  //             child: Text('Approve'),
-  //             onPressed: () {
-  //               Navigator.of(context).pop();
-  //               _navigateToNewPage(counter);
-  //             },
-  //           ),
-  //           TextButton(
-  //             child: Text('Deny'),
-  //             onPressed: () {
-  //               Navigator.of(context).pop();
-  //             },
-  //           )
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 
   void _submit({int counter}) {
     _navigateToNewPage(counter);
@@ -243,7 +178,6 @@ class _StartPageState extends State<StartPage>
         setState(() {
           charging = true;
         });
-        // navigateToCharging();
       } else {
         setToDefault();
       }
@@ -277,7 +211,6 @@ class _StartPageState extends State<StartPage>
 
   Future<List> getUserInfo(menus) async {
     List<dynamic> userMap;
-    final prefs = await SharedPreferences.getInstance();
 
     final String userStr = menus;
     if (userStr != null) {
@@ -285,10 +218,7 @@ class _StartPageState extends State<StartPage>
     }
     if (userMap != null) {
       final List<dynamic> usersList = userMap;
-      // setState(() {
-      //   list = usersList;
-      // });
-      // dataStored = prefs.getString('isLoaded');
+
       return usersList;
     }
     return null;
@@ -310,11 +240,11 @@ class _StartPageState extends State<StartPage>
             element.appName.toLowerCase().toString() ==
             i['appName'].toLowerCase().toString());
         if (index == -1) {
-          var s = {
-            'appName': i['appName'],
-            'packageName': i['packageName'],
-            'icon': i['icon']
-          };
+          // var s = {
+          //   'appName': i['appName'],
+          //   'packageName': i['packageName'],
+          //   'icon': i['icon']
+          // };
           prefs.setString('removedAppName', i['appName']);
           // v.removeWhere((element) => element['appName'] == s['appName']);
           prefs.setString('menus', jsonEncode(v));
@@ -328,16 +258,6 @@ class _StartPageState extends State<StartPage>
       for (var i in appsList) {
         bool isSystemApp = await InstalledApps.isSystemApp(i.packageName);
         if (isSystemApp == false || i.appName.toLowerCase() == "phone") {
-          // print(i.appName);
-          // if (i.appName.toLowerCase() == "tusk") {
-          //   var s = 0;
-          // }
-          var index2;
-          v.indexWhere((element) => index2 =
-              element['appName'].toString().toLowerCase() ==
-                  i.appName.toString().toLowerCase());
-          // }
-          // print(index2);
           var index = v.indexWhere((element) =>
               element['appName'].toLowerCase().toString() ==
               i.appName.toLowerCase().toString());
@@ -365,73 +285,12 @@ class _StartPageState extends State<StartPage>
                   'newAppIndex',
                   v.indexWhere(
                       (element) => element['appName'] == s['appName']));
-              // prefs.setString('menus', jsonEncode(v));
-              // print(result);
               prefs.setBool('loading', false);
             }
             prefs.setBool('isRecentAppInstalled', true);
           }
         }
       }
-
-      // prefs.setString('isLoaded', 'true');
-
-      //
-
-      // futureList.sort((a, b) => a.appName
-      //     .toString()
-      //     .toLowerCase()
-      //     .compareTo(b.appName.toString().toLowerCase()));
-
-      // setStateIfMounted(() {
-      //   list = futureList;
-      //   loading = false;
-      // });
-      // print(list.length);
-      // return futureList;
-
-      /////////////////////////////////////////////////
-      // Future<List<AppInfo>> apps =
-      //     InstalledApps.getInstalledApps(false, true, "");
-
-      // List<AppsList> futureList = [];
-      // var appsList = await apps;
-      // for (var i in appsList) {
-      //   bool isSystemApp = await InstalledApps.isSystemApp(i.packageName);
-
-      //   if (isSystemApp && i.appName.toLowerCase() == 'phone' || !isSystemApp) {
-      //     AppsList appsLists = AppsList(i.appName, i.packageName, i.icon);
-      //     futureList.add(appsLists);
-      //   }
-      // }
-
-      // futureList.sort((a, b) => a.appName
-      //     .toString()
-      //     .toLowerCase()
-      //     .compareTo(b.appName.toString().toLowerCase()));
-
-      // setStateIfMounted(() {
-      //   list = futureList;
-      //   loading = false;
-      // });
-
-      // bool result = await prefs.setString('menus', jsonEncode(futureList));
-      // prefs.setString('isLoaded', 'true');
-      // print(result);
-
-      // setStateIfMounted(() {
-      //   list = futureList;
-      //   loading = false;
-      // });
-      // dataStored = prefs.getString('isLoaded');
-      // prefs.setString('isLoaded', 'true');
-      // setStateIfMounted(() {
-      //   list = v;
-      //   loading = false;
-      // });
-      // return list;
-      // print(list.length);
-      // return v;
     }
   }
 
@@ -468,40 +327,14 @@ class _StartPageState extends State<StartPage>
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    MediaQueryData queryData;
-    queryData = MediaQuery.of(context);
+    // MediaQueryData queryData;
+    // queryData = MediaQuery.of(context);
 
     return WillPopScope(
         // ignore: missing_return
         onWillPop: () {
           return remainSamePage();
         },
-        // onDoubleTap: () {},
-
-        // onWillPop: () => Navigator.pop(),
-        // showDialog<bool>(
-        //     context: context,
-        //     builder: (c) => AlertDialog(
-        //           title: Text('Warning'),
-        //           content: Text('Do you really want to exit'),
-        //           actions: [
-        //             FlatButton(
-        //               child: Text('Yes'),
-        //               onPressed: () => Navigator.pop(c, true),
-        //             ),
-        //             FlatButton(
-        //               child: Text('No'),
-        //               onPressed: () => Navigator.pop(c, false),
-        //             ),
-        //           ],
-        //         )
-        // ),
         child: FocusDetector(
             onFocusLost: () {
               print(
@@ -522,9 +355,6 @@ class _StartPageState extends State<StartPage>
                 '\nIt means the widget is no longer visible within your app.',
               );
             },
-            onVisibilityGained: () {
-              // checkInstalledApps();
-            },
             onForegroundLost: () {
               print(
                 'Foreground Lost.'
@@ -532,9 +362,6 @@ class _StartPageState extends State<StartPage>
                 'background by opening another app or turned off the device\'s '
                 'screen while your widget was visible.',
               );
-            },
-            onForegroundGained: () {
-              // checkInstalledApps();
             },
             child: TouchableOpacity(
                 onDoubleTap: () {
@@ -553,33 +380,11 @@ class _StartPageState extends State<StartPage>
                     resizeToAvoidBottomInset: true,
                     backgroundColor: Colors.black,
                     body: Center(
-                      // Center is a layout widget. It takes a single child and positions it
-                      // in the middle of the parent.
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
                         child: Column(
-                          // Column is also a layout widget. It takes a list of children and
-                          // arranges them vertically. By default, it sizes itself to fit its
-                          // children horizontally, and tries to be as tall as its parent.
-                          //
-                          // Invoke "debug painting" (press "p" in the console, choose the
-                          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-                          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-                          // to see the wireframe for each widget.
-                          //
-                          // Column has various properties to control how it sizes itself and
-                          // how it positions its children. Here we use mainAxisAlignment to
-                          // center the children vertically; the main axis here is the vertical
-                          // axis because Columns are vertical (the cross axis would be
-                          // horizontal).
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: <Widget>[
-                            // RaisedButton(
-                            //
-                            //     child: Text('s'),
-                            //     shape: RoundedRectangleBorder(
-                            //       borderRadius: new BorderRadius.circular(30.0),
-                            //     )),
                             Padding(
                               padding: EdgeInsets.all(5),
                               child: Row(
@@ -612,19 +417,11 @@ class _StartPageState extends State<StartPage>
                                           ]),
                                       onPressed: () {
                                         _launchCaller("");
-                                        //  UrlLauncher.launch("tel://<phone_number>");
-                                        // DeviceApps.openApp("com.android.incallui");
                                       },
                                       onLongPress: () {
                                         _launchCaller('');
                                       },
-                                      // DeviceApps.openApp('com.android.incallui'),
-                                      style:
-                                          // ElevatedButton.styleFrom(
-                                          //   shape: CircleBorder(),
-
-                                          // ),
-                                          ButtonStyle(
+                                      style: ButtonStyle(
                                         shape: MaterialStateProperty.all<
                                                 RoundedRectangleBorder>(
                                             RoundedRectangleBorder(
@@ -773,13 +570,7 @@ class _StartPageState extends State<StartPage>
                           ],
                         ),
                       ),
-                    )
-                    // floatingActionButton: FloatingActionButton(
-                    //   onPressed: _incrementCounter,
-                    //   tooltip: 'press me',
-                    //   child: Icon(Icons.add),
-                    // ) // This trailing comma makes auto-formatting nicer for build methods.
-                    ))));
+                    )))));
   }
 }
 
