@@ -436,8 +436,8 @@ class _StartPageState extends State<StartPage>
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 stops: [
-                              0.7,
-                              0.72,
+                              0.74,
+                              0.75,
                               0.79,
                               0.95,
                               1
