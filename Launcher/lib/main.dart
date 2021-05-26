@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:Smart_Power_Launcher/Charging.dart';
@@ -8,6 +9,7 @@ import 'package:device_apps/device_apps.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:installed_apps/installed_apps.dart';
+import 'package:intl/intl.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:touchable_opacity/touchable_opacity.dart';
@@ -105,6 +107,9 @@ class _StartPageState extends State<StartPage>
   Animation<double> animation2;
 
   void _submit({int counter}) {
+    setStateIfMounted(() {
+      animcolor = Colors.black;
+    });
     _navigateToNewPage(counter);
   }
 
@@ -161,17 +166,25 @@ class _StartPageState extends State<StartPage>
   var _battery = new Battery();
   Timer timer;
   int counter = 0;
+  var animcolor = Colors.black;
+  String formattedDate = '';
+  String isAmPm = '';
+
   @override
   void initState() {
     super.initState();
     checkInstalledApps();
     checkBatterylevel();
+    // changeColor();
     // startTimer();
-
+    Timer.periodic(Duration(seconds: 1), (timer) {
+      setTime();
+    });
     // checkInstalledApps();
     setState(() {
       onChangeIcon = false;
     });
+
     _batteryStateSubscription =
         _battery.onBatteryStateChanged.listen((BatteryState state) {
       if (state == BatteryState.charging) {
@@ -195,6 +208,31 @@ class _StartPageState extends State<StartPage>
       });
     // #enddocregion addListener
     controller.forward();
+  }
+
+  changeColor() {
+    Future.delayed(Duration(seconds: 1), () {
+      var colorsList = [
+        Colors.red,
+        Colors.green,
+        Colors.blue,
+        Colors.orange,
+        Colors.purple
+      ];
+      var _randomColor = new Random();
+
+      var element = colorsList[_randomColor.nextInt(colorsList.length)];
+      setStateIfMounted(() {
+        animcolor = element;
+      });
+    });
+  }
+
+  resetColorAndChange() {
+    setStateIfMounted(() {
+      animcolor = Colors.black;
+    });
+    changeColor();
   }
 
   changeMenu(event) async {
@@ -325,6 +363,17 @@ class _StartPageState extends State<StartPage>
     }
   }
 
+  setTime() {
+    DateTime now = DateTime.now();
+    formattedDate = DateFormat('h:mm').format(now);
+    isAmPm = DateFormat('aa').format(now);
+
+    setStateIfMounted(() {
+      formattedDate = formattedDate;
+      isAmPm = isAmPm;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // MediaQueryData queryData;
@@ -346,6 +395,7 @@ class _StartPageState extends State<StartPage>
               );
             },
             onFocusGained: () {
+              resetColorAndChange();
               checkInstalledApps();
               checkBatterylevel();
             },
@@ -379,198 +429,308 @@ class _StartPageState extends State<StartPage>
                 child: Scaffold(
                     resizeToAvoidBottomInset: true,
                     backgroundColor: Colors.black,
-                    body: Center(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: <Widget>[
-                            Padding(
-                              padding: EdgeInsets.all(5),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
+                    body: AnimatedContainer(
+                        curve: Curves.decelerate,
+                        decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                stops: [
+                              0.7,
+                              0.72,
+                              0.79,
+                              0.95,
+                              1
+                            ],
+                                colors: [
+                              Colors.black,
+                              Colors.black,
+                              Colors.black,
+                              animcolor,
+                              animcolor
+                            ])
+                            // RadialGradient(
+                            //   colors: [
+                            //     Colors.black,
+                            //     Colors.black,
+                            //     animcolor,
+                            //     Colors.black
+                            //   ],
+                            //   // radius: 10,
+                            //   stops: [0.6, 0.7, 0.8, 1],
+                            //   radius: 2,
+                            //   center: Alignment(2.5, -1.5),
+                            //   // focal: Alignment(-0.1, 0.9s),
+                            //   focalRadius: 2,
+                            // ),
+                            ),
+                        // RadialGradient(
+                        //     radius: 5,
+                        //     center: Alignment(6, -5),
+                        //     // begin: Alignment.topRight,
+                        //     // end: Alignment.bottomLeft,
+                        //     stops: [0.2, 0.3, 0.4, 0.5],
+                        //     focal: Alignment(0.1, 0.3),
+                        //     colors: [
+                        //       Colors.black,
+                        //       animcolor,
+                        //       Colors.black,
+                        //       Colors.black
+                        //     ])),
+                        duration: Duration(milliseconds: 899),
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(0, 0, 0, 10),
+                            child: Column(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
-                                children: [
-                                  ConstrainedBox(
-                                    constraints: BoxConstraints.tightFor(
-                                        width: 60, height: 60),
-                                    child: ElevatedButton(
-                                      child: Column(
+                                children: <Widget>[
+                                  Padding(
+                                    padding: EdgeInsets.fromLTRB(40, 80, 0, 0),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '$formattedDate',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 58,
+                                              fontFamily: 'Montserrat'),
+                                        ),
+                                        Text(
+                                          ' $isAmPm',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontFamily: 'Montserrat'),
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: <Widget>[
+                                      Padding(
+                                        padding: EdgeInsets.all(5),
+                                        child: Row(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.center,
                                           mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: <Widget>[
-                                            Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.center,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: <Widget>[
-                                                  Icon(
-                                                    Icons.phone,
-                                                    size: 25,
-                                                    color: Colors.blueAccent,
-                                                  ),
-                                                ]),
-                                          ]),
-                                      onPressed: () {
-                                        _launchCaller("");
-                                      },
-                                      onLongPress: () {
-                                        _launchCaller('');
-                                      },
-                                      style: ButtonStyle(
-                                        shape: MaterialStateProperty.all<
-                                                RoundedRectangleBorder>(
-                                            RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(30.0),
-                                        )),
-                                        backgroundColor: MaterialStateProperty
-                                            .resolveWith<Color>(
-                                          (Set<MaterialState> states) {
-                                            if (states.contains(
-                                                MaterialState.pressed))
-                                              return Colors.blueAccent;
-                                            return Colors
-                                                .black; // Use the component's default.
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-
-                                  //menu button
-                                  Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        if ((batteryPercentage != 0 &&
-                                                batteryPercentage < 20) ||
-                                            (switchState == 'off' &&
-                                                batteryPercentage != 0))
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              setBatterySavorMode();
-                                            },
-                                            style: ButtonStyle(
-                                                shape: MaterialStateProperty.all<
-                                                        RoundedRectangleBorder>(
-                                                    RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          18.0),
-                                                )),
-                                                backgroundColor:
-                                                    MaterialStateProperty
-                                                        .resolveWith<Color>(
-                                                            (states) =>
-                                                                Colors.red)),
-                                            child: Text(
-                                              'Turn $switchState power saver mode',
-                                              style: TextStyle(
-                                                  color: Colors.white),
-                                            ),
-                                          ),
-                                        ConstrainedBox(
-                                          constraints: BoxConstraints.tightFor(
-                                              width: onChangeIcon ? 80 : 50,
-                                              height: onChangeIcon ? 80 : 50),
-                                          child: ElevatedButton(
-                                            child: onChangeIcon == true
-                                                ? Image.asset(
-                                                    'assets/images/ga1.png',
-                                                    height: 80,
-                                                    width: 80,
-                                                    fit: BoxFit.contain,
-                                                  )
-                                                : AppDrawerIcon(),
-                                            onLongPress: () => {
-                                              setState(() {
-                                                onChangeIcon = true;
-                                              }),
-                                              Future.delayed(
-                                                  Duration(seconds: 1), () {
-                                                DeviceApps.openApp(
-                                                    "com.google.android.apps.googleassistant");
-                                                setState(() {
-                                                  onChangeIcon = false;
-                                                });
-                                              })
-                                            },
-                                            onPressed: () =>
-                                                _submit(counter: _counter),
-                                            style: ButtonStyle(
-                                              shape: MaterialStateProperty.all<
-                                                      RoundedRectangleBorder>(
-                                                  RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(30.0),
-                                              )),
-                                              backgroundColor:
-                                                  MaterialStateProperty
-                                                      .resolveWith<Color>(
-                                                (Set<MaterialState> states) {
-                                                  if (states.contains(
-                                                      MaterialState.pressed))
-                                                    return Colors.red;
-                                                  return Colors
-                                                      .black; // Use the component's default.
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            ConstrainedBox(
+                                              constraints:
+                                                  BoxConstraints.tightFor(
+                                                      width: 60, height: 60),
+                                              child: ElevatedButton(
+                                                child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .center,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: <Widget>[
+                                                      Row(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .center,
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .center,
+                                                          children: <Widget>[
+                                                            Icon(
+                                                              Icons.phone,
+                                                              size: 25,
+                                                              color: Colors
+                                                                  .blueAccent,
+                                                            ),
+                                                          ]),
+                                                    ]),
+                                                onPressed: () {
+                                                  _launchCaller("");
                                                 },
+                                                onLongPress: () {
+                                                  _launchCaller('');
+                                                },
+                                                style: ButtonStyle(
+                                                  shape: MaterialStateProperty
+                                                      .all<RoundedRectangleBorder>(
+                                                          RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            30.0),
+                                                  )),
+                                                  backgroundColor:
+                                                      MaterialStateProperty
+                                                          .resolveWith<Color>(
+                                                    (Set<MaterialState>
+                                                        states) {
+                                                      if (states.contains(
+                                                          MaterialState
+                                                              .pressed))
+                                                        return Colors
+                                                            .blueAccent;
+                                                      return Colors
+                                                          .black; // Use the component's default.
+                                                    },
+                                                  ),
+                                                ),
                                               ),
                                             ),
-                                          ),
+
+                                            //menu button
+                                            Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  // if ((batteryPercentage != 0 &&
+                                                  //         batteryPercentage < 20) ||
+                                                  //     (switchState == 'off' &&
+                                                  //         batteryPercentage != 0))
+                                                  //   ElevatedButton(
+                                                  //     onPressed: () {
+                                                  //       setBatterySavorMode();
+                                                  //     },
+                                                  //     style: ButtonStyle(
+                                                  //         shape: MaterialStateProperty.all<
+                                                  //                 RoundedRectangleBorder>(
+                                                  //             RoundedRectangleBorder(
+                                                  //           borderRadius:
+                                                  //               BorderRadius.circular(
+                                                  //                   18.0),
+                                                  //         )),
+                                                  //         backgroundColor:
+                                                  //             MaterialStateProperty
+                                                  //                 .resolveWith<Color>(
+                                                  //                     (states) =>
+                                                  //                         Colors.red)),
+                                                  //     child: Text(
+                                                  //       'Turn $switchState power saver mode',
+                                                  //       style: TextStyle(
+                                                  //           color: Colors.white),
+                                                  //     ),
+                                                  //   ),
+                                                  ConstrainedBox(
+                                                    constraints:
+                                                        BoxConstraints.tightFor(
+                                                            width: onChangeIcon
+                                                                ? 80
+                                                                : 50,
+                                                            height: onChangeIcon
+                                                                ? 80
+                                                                : 50),
+                                                    child: ElevatedButton(
+                                                      child:
+                                                          onChangeIcon == true
+                                                              ? Image.asset(
+                                                                  'assets/images/ga1.png',
+                                                                  height: 80,
+                                                                  width: 80,
+                                                                  fit: BoxFit
+                                                                      .contain,
+                                                                )
+                                                              : AppDrawerIcon(),
+                                                      onLongPress: () => {
+                                                        setState(() {
+                                                          onChangeIcon = true;
+                                                        }),
+                                                        Future.delayed(
+                                                            Duration(
+                                                                seconds: 1),
+                                                            () {
+                                                          DeviceApps.openApp(
+                                                              "com.google.android.apps.googleassistant");
+                                                          setState(() {
+                                                            onChangeIcon =
+                                                                false;
+                                                          });
+                                                        })
+                                                      },
+                                                      onPressed: () => _submit(
+                                                          counter: _counter),
+                                                      style: ButtonStyle(
+                                                        shape: MaterialStateProperty.all<
+                                                                RoundedRectangleBorder>(
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      30.0),
+                                                        )),
+                                                        backgroundColor:
+                                                            MaterialStateProperty
+                                                                .resolveWith<
+                                                                    Color>(
+                                                          (Set<MaterialState>
+                                                              states) {
+                                                            if (states.contains(
+                                                                MaterialState
+                                                                    .pressed))
+                                                              return Colors.red;
+                                                            return Colors
+                                                                .transparent; // Use the component's default.
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ]),
+                                            //
+                                            ConstrainedBox(
+                                              constraints:
+                                                  BoxConstraints.tightFor(
+                                                      width: 60, height: 60),
+                                              child: ElevatedButton(
+                                                onPressed: () {
+                                                  _textMe();
+                                                },
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: <Widget>[
+                                                    Icon(
+                                                      Icons.message,
+                                                      color:
+                                                          Colors.orangeAccent,
+                                                    )
+                                                  ],
+                                                ),
+                                                style: ButtonStyle(
+                                                  shape: MaterialStateProperty
+                                                      .all<RoundedRectangleBorder>(
+                                                          RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            30.0),
+                                                  )),
+                                                  backgroundColor:
+                                                      MaterialStateProperty
+                                                          .resolveWith<Color>(
+                                                    (Set<MaterialState>
+                                                        states) {
+                                                      if (states.contains(
+                                                          MaterialState
+                                                              .pressed))
+                                                        return Colors.orange;
+                                                      return Colors
+                                                          .black; // Use the component's default.
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ]),
-                                  //
-                                  ConstrainedBox(
-                                    constraints: BoxConstraints.tightFor(
-                                        width: 50, height: 50),
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        _textMe();
-                                      },
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: <Widget>[
-                                          Icon(
-                                            Icons.message,
-                                            color: Colors.orangeAccent,
-                                          )
-                                        ],
-                                      ),
-                                      style: ButtonStyle(
-                                        shape: MaterialStateProperty.all<
-                                                RoundedRectangleBorder>(
-                                            RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(30.0),
-                                        )),
-                                        backgroundColor: MaterialStateProperty
-                                            .resolveWith<Color>(
-                                          (Set<MaterialState> states) {
-                                            if (states.contains(
-                                                MaterialState.pressed))
-                                              return Colors.orange;
-                                            return Colors
-                                                .black; // Use the component's default.
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    )))));
+                                      )
+                                    ],
+                                  )
+                                ]),
+                          ),
+                        ))))));
   }
 }
 
@@ -583,11 +743,12 @@ class AppDrawerIcon extends StatelessWidget {
         children: <Widget>[
           Row(
               crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: <Widget>[
                 Icon(
                   Icons.circle,
                   size: 5,
+                  color: Colors.transparent,
                 ),
                 Icon(
                   Icons.circle,
@@ -596,6 +757,7 @@ class AppDrawerIcon extends StatelessWidget {
                 Icon(
                   Icons.circle,
                   size: 5,
+                  color: Colors.transparent,
                 ),
               ]),
           Row(
